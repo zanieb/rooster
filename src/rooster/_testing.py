@@ -11,7 +11,11 @@ import pytest
 
 @pytest.fixture
 def git_directory(tmp_path: Path) -> Path:
-    subprocess.check_call(["git", "init"], cwd=tmp_path)
+    subprocess.check_call(["git", "init", "-b", "main"], cwd=tmp_path)
+    subprocess.check_call(
+        ["git", "config", "user.email", "test@example.com"], cwd=tmp_path
+    )
+    subprocess.check_call(["git", "config", "user.name", "Test User"], cwd=tmp_path)
     yield tmp_path
 
 
