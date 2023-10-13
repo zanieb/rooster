@@ -34,15 +34,15 @@ jobs:
 
       - name: Install packages
         run: |
-          poetry install --group dev
+          poetry install
 
       - name: Lint Python
         run: |
-          ruff check .
+          poetry run -- ruff check .
 
       - name: Check Python formatting
         run: |
-          ruff format --check .
+          poetry run -- ruff format --check .
 
       - name: Check packaging
         run: |
