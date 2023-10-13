@@ -95,7 +95,14 @@ def entry(repo: Path = typer.Argument(default=Path(".")), version: str = None):
     """
     if version is None:
         # Get the version from the pyproject file
-        pyproject = tomllib.loads(repo.joinpath("pyproject.toml").read_text())
+        pyproject_path = repo.joinpath("pyproject.toml")
+        if not pyproject_path.exists():
+            typer.echo(
+                "No pyproject.toml file found; provide a version to generate an entry for."
+            )
+            raise typer.Exit(1)
+
+        pyproject = tomllib.loads(pyproject_path.read_text())
         version = pyproject["project"]["version"]
         typer.echo(f"Found version {version}")
 

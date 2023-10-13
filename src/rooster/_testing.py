@@ -35,7 +35,23 @@ def empty_commit(directory: Path, message: str) -> None:
 
 
 @pytest.fixture
-def mock_project(git_directory) -> Path:
+def mock_pyproject(git_directory: Path) -> Path:
+    """
+    Creates a mock pyproject.toml file.
+    """
+    pyproject = git_directory.joinpath("pyproject.toml")
+    pyproject.write_text(
+        f"""
+        [project]
+        name = "test-project"
+        version = "0.0.0"
+        """
+    )
+    yield pyproject
+
+
+@pytest.fixture
+def mock_project(git_directory: Path, mock_pyproject: Path) -> Path:
     """
     A basic mock project.
     """
