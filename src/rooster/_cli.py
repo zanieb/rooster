@@ -1,18 +1,18 @@
 from pathlib import Path
 
-import typer
 import tomllib
+import typer
 
 from rooster._changelog import (
+    add_or_update_entry,
+    entry_to_standalone,
+    extract_entry,
     generate_changelog,
     get_versions_from_changelog,
-    add_or_update_entry,
-    extract_entry,
-    entry_to_standalone,
 )
 from rooster._config import get_config
 from rooster._git import get_commits_between, get_remote_url
-from rooster._github import get_pull_requests_for_commits, parse_remote_url, get_release
+from rooster._github import get_pull_requests_for_commits, get_release, parse_remote_url
 from rooster._versions import (
     Version,
     bump_version,
