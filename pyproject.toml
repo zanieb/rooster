@@ -36,11 +36,11 @@ httpx = "^0.25.0"
 tqdm = "^4.66.1"
 hishel = "^0.0.12"
 pydantic = "^2.4.2"
-syrupy = "^4.5.0"
 
 [tool.poetry.group.dev.dependencies]
 mypy = ">=0.971"
 ruff = ">=0.0.287"
+syrupy = "^4.5.0"
 pytest = "^7.4.2"
 
 [build-system]
