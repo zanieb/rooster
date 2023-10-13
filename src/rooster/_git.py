@@ -49,6 +49,8 @@ def get_commits_between(
         yield commit
 
 
-def get_remote_url(target: Path, remote_name: str = "origin") -> str:
+def get_remote_url(target: Path, remote_name: str = "origin") -> str | None:
     repo = git.repository.Repository(target.absolute())
+    if remote_name not in repo.remotes:
+        return None
     return repo.remotes[remote_name].url

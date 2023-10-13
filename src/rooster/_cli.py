@@ -104,12 +104,23 @@ def entry(repo: Path = typer.Argument(default=Path(".")), version: str = None):
 
     versions = get_versions(repo)
     previous_version = get_previous_version(versions, version)
-    typer.echo(f"Found previous version {previous_version}")
+    if previous_version:
+        typer.echo(f"Found previous version {previous_version}")
 
     changes = list(get_commits_between(repo, previous_version))
-    typer.echo(f"Found {len(changes)} commits since {previous_version}")
+    if previous_version:
+        typer.echo(f"Found {len(changes)} commits since {previous_version}")
+    else:
+        typer.echo(f"Found {len(changes)} commits")
 
-    owner, repo_name = parse_remote_url(get_remote_url(repo))
+    remote = get_remote_url(repo)
+    if not remote:
+        typer.echo(
+            "No remote found; cannot retrieve pull requests to generate changelog entry"
+        )
+        raise typer.Exit(1)
+
+    owner, repo_name = parse_remote_url(remote)
 
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
