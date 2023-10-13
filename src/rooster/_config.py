@@ -1,6 +1,7 @@
+from pathlib import Path
+
 import pydantic
 import tomllib
-from pathlib import Path
 
 
 class Config(pydantic.BaseModel):
