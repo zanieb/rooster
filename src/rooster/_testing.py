@@ -2,10 +2,11 @@
 Utilities for testing
 """
 
-import pytest
 import subprocess
 from pathlib import Path
 from typing import Generator
+
+import pytest
 
 
 @pytest.fixture
@@ -41,7 +42,7 @@ def mock_pyproject(git_directory: Path) -> Path:
     """
     pyproject = git_directory.joinpath("pyproject.toml")
     pyproject.write_text(
-        f"""
+        """
         [project]
         name = "test-project"
         version = "0.0.0"

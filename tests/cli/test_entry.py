@@ -1,16 +1,16 @@
+import io
+import subprocess
+from pathlib import Path
+
+from rooster._pyproject import update_pyproject_version
 from rooster._testing import (
-    git_directory,
     create_tags,
     empty_commit,
+    git_directory,
     mock_project,
-    rooster_command,
     mock_pyproject,
+    rooster_command,
 )
-from rooster._pyproject import update_pyproject_version
-
-from pathlib import Path
-import subprocess
-import io
 
 
 def test_entry_no_version_no_pyproject(mock_project: Path, snapshot):

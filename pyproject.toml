@@ -50,4 +50,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.ruff]
 extend-select = ["I"]
 
+# Ignore line length; the formatter handles it
 ignore = ["E501"]
+
+# Ignore some codes that break due to pytest fixtures in tests
+per-file-ignores = {"tests/**/*.py" = ["F401", "F811"]}
