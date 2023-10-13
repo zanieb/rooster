@@ -34,7 +34,7 @@ jobs:
 
       - name: Install packages
         run: |
-          poetry install
+          poetry install --group dev
 
       - name: Lint Python
         run: |
