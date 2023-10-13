@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   python-tests:
-    name: Python ${{ matrix.python-version }}
+    name: python-${{ matrix.python-version }}, ${{ matrix.os }}
 
     strategy:
       matrix:
@@ -32,7 +32,8 @@ jobs:
           - ubuntu-latest
         python-version:
           - "3.11"
-          - "3.12"
+          # libgit2 does not publish wheels yet
+          # - "3.12"
 
       fail-fast: false
 
