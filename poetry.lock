@@ -576,6 +576,20 @@ files = [
 ]
 
 [[package]]
+name = "syrupy"
+version = "4.5.0"
+description = "Pytest Snapshot Test Utility"
+optional = false
+python-versions = ">=3.8.1,<4"
+files = [
+    {file = "syrupy-4.5.0-py3-none-any.whl", hash = "sha256:ea6a237ef374bacebbdb4049f73bf48e3dda76eabd4621a6d104d43077529de6"},
+    {file = "syrupy-4.5.0.tar.gz", hash = "sha256:6e01fccb4cd5ad37ce54e8c265cde068fa9c37b7a0946c603c328e8a38a7330d"},
+]
+
+[package.dependencies]
+pytest = ">=7.0.0,<8.0.0"
+
+[[package]]
 name = "tqdm"
 version = "4.66.1"
 description = "Fast, Extensible Progress Meter"
@@ -630,4 +644,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "13cc08f50fb47edeb7be1375914c56edeb22a1e2bed64fd9cb85d0b6daa8af5e"
+content-hash = "74ac058c88bab096c35102e56eccf9467a41da7dea2eafac895a0dd614b7006f"
