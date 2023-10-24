@@ -1,11 +1,15 @@
+from enum import Enum
 from pathlib import Path
-from typing import Literal
 
 from packaging.version import InvalidVersion, Version
 
 from rooster._git import get_tags
 
-BumpTypes = Literal["major", "minor", "patch"]
+
+class BumpType(Enum):
+    major = "major"
+    minor = "minor"
+    patch = "patch"
 
 
 def get_versions(repo: Path) -> list[Version]:
@@ -42,17 +46,17 @@ def get_previous_version(versions: list[Version], version: Version) -> Version |
     return versions[index]
 
 
-def bump_version(version: Version, bump_type: BumpTypes) -> Version:
+def bump_version(version: Version, bump_type: BumpType) -> Version:
     # Pull the release section from the version and increment the appropriate number
     release = list(version.release)
 
     match bump_type:
-        case "patch":
+        case BumpType.patch:
             release[2] += 1
-        case "minor":
+        case BumpType.minor:
             release[1] += 1
             release[2] = 0
-        case "major":
+        case BumpType.major:
             release[0] += 1
             # Reset minor and patch versions
             release[1] = 0

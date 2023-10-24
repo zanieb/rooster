@@ -15,6 +15,7 @@ from rooster._config import get_config
 from rooster._git import get_commits_between, get_remote_url
 from rooster._github import get_pull_requests_for_commits, get_release, parse_remote_url
 from rooster._versions import (
+    BumpType,
     Version,
     bump_version,
     get_latest_version,
@@ -26,22 +27,12 @@ app = typer.Typer()
 
 
 @app.command()
-def release(
-    repo: Path = typer.Argument(default=Path(".")),
-    major: bool = False,
-    minor: bool = False,
-    patch: bool = False,
-):
+def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = None):
     """
     Create a new release.
 
-    If no version bump is provided, via `--major`, `--minor`, or `--patch`, the version bump will
-    be detected based on the pull request labels.
+    If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
-    if sum([major, minor, patch]) > 1:
-        typer.echo("Only one of --major, --minor, or --patch can be provided")
-        raise typer.Exit(1)
-
     versions = get_versions(repo)
     previous_version = get_latest_version(versions)
     typer.echo(f"Found previous version {previous_version}")
@@ -59,23 +50,26 @@ def release(
         labels.update(pull_request.labels)
 
     config = get_config(repo)
-    bump_type = "patch"
-    for label in config.major_labels:
-        if label in labels:
-            typer.echo(f"Detected major version change due label {label}")
-            bump_type = "major"
-            break
+    if bump:
+        bump_type = bump
+    else:
+        bump_type = BumpType.patch
+        for label in config.major_labels:
+            if label in labels:
+                typer.echo(f"Detected major version change due label {label}")
+                bump_type = BumpType.major
+                break
 
-    for label in config.minor_labels:
-        if label in labels:
-            typer.echo(f"Detected minor version change due label {label}")
-            bump_type = "minor"
-            break
+        for label in config.minor_labels:
+            if label in labels:
+                typer.echo(f"Detected minor version change due label {label}")
+                bump_type = BumpType.minor
+                break
 
-    if bump_type == "patch":
-        typer.echo(
-            "Detected patch version change — did not see any major or minor labels"
-        )
+        if bump_type == BumpType.patch:
+            typer.echo(
+                "Detected patch version change — did not see any major or minor labels"
+            )
 
     new_version = bump_version(
         # If there is no previous version, start at 0.0.0
