@@ -51,6 +51,7 @@ def get_commits_between(
 
 def get_remote_url(target: Path, remote_name: str = "origin") -> str | None:
     repo = git.repository.Repository(target.absolute())
-    if remote_name not in repo.remotes:
+    names = {remote.name for remote in repo.remotes}
+    if remote_name not in names:
         return None
     return repo.remotes[remote_name].url

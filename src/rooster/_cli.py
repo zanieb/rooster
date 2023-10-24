@@ -8,6 +8,7 @@ from rooster._changelog import (
     entry_to_standalone,
     extract_entry,
     generate_changelog,
+    generate_contributors,
     get_versions_from_changelog,
 )
 from rooster._config import get_config
@@ -88,7 +89,11 @@ def release(repo: Path = typer.Argument(default=Path("."))):
 
 
 @app.command()
-def entry(repo: Path = typer.Argument(default=Path(".")), version: str = None):
+def entry(
+    repo: Path = typer.Argument(default=Path(".")),
+    version: str = None,
+    skip_existing: bool = False,
+):
     """
     Generate a changelog entry for a version.
     If not provided, the current local version from the pyproject.toml file will be used.
@@ -132,10 +137,79 @@ def entry(repo: Path = typer.Argument(default=Path(".")), version: str = None):
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
+    changelog_file = repo.joinpath("CHANGELOG.md")
+    if skip_existing and changelog_file.exists():
+        existing_changelog = changelog_file.read_text()
+        existing_entry = extract_entry(existing_changelog, version)
+        if existing_entry:
+            previous_count = len(pull_requests)
+            pull_requests = [
+                pr for pr in pull_requests if f"[#{pr.number}]" not in existing_entry
+            ]
+            breakpoint()
+            skipped = previous_count - len(pull_requests)
+            if skipped:
+                typer.echo(
+                    f"Excluding {skipped} pull requests already in changelog entry for {version}"
+                )
+
     config = get_config(repo)
 
     changelog = generate_changelog(pull_requests, config)
     print(changelog)
+
+
+@app.command()
+def contributors(
+    repo: Path = typer.Argument(default=Path(".")),
+    version: str = None,
+):
+    """
+    Generate a contributor list for a version.
+    If not provided, the current local version from the pyproject.toml file will be used.
+    """
+    if version is None:
+        # Get the version from the pyproject file
+        pyproject_path = repo.joinpath("pyproject.toml")
+        if not pyproject_path.exists():
+            typer.echo(
+                "No pyproject.toml file found; provide a version to generate an entry for."
+            )
+            raise typer.Exit(1)
+
+        pyproject = tomllib.loads(pyproject_path.read_text())
+        version = pyproject["project"]["version"]
+        typer.echo(f"Found version {version}")
+
+    # Parse the version
+    version = Version(version)
+
+    versions = get_versions(repo)
+    previous_version = get_previous_version(versions, version)
+    if previous_version:
+        typer.echo(f"Found previous version {previous_version}")
+
+    changes = list(get_commits_between(repo, previous_version))
+    if previous_version:
+        typer.echo(f"Found {len(changes)} commits since {previous_version}")
+    else:
+        typer.echo(f"Found {len(changes)} commits")
+
+    remote = get_remote_url(repo)
+    if not remote:
+        typer.echo(
+            "No remote found; cannot retrieve pull requests to generate changelog entry"
+        )
+        raise typer.Exit(1)
+
+    owner, repo_name = parse_remote_url(remote)
+
+    typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
+    pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
+
+    config = get_config(repo)
+
+    print(generate_contributors(pull_requests, config))
 
 
 @app.command()

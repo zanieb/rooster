@@ -9,6 +9,7 @@ class Config(pydantic.BaseModel):
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
 
+    changelog_authors: bool = True
     changelog_sections: dict[str, str] = {
         "breaking": "Breaking changes",
         "feature": "New features",
@@ -17,7 +18,9 @@ class Config(pydantic.BaseModel):
     changelog_ignore_labels: frozenset[str] = frozenset([])
     changelog_ignore_authors: frozenset[str] = frozenset(["dependabot"])
 
-    change_template: str = "- {pull_request.title} (#{pull_request.number})"
+    change_template: (
+        str
+    ) = "- {pull_request.title} ([#{pull_request.number}]({pull_request.url}))"
 
     @pydantic.validator("changelog_sections", always=True)
     def require_unknown_key(cls, value):

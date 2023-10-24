@@ -17,7 +17,9 @@ def generate_changelog(pull_requests: list[PullRequest], config: Config) -> str:
         for label in pull_request.labels:
             if label in config.changelog_ignore_labels:
                 break
-            if label in config.changelog_sections:
+        # Iterate in-order of changelog sections to support user-configured precedence
+        for label in config.changelog_sections:
+            if label in pull_request.labels:
                 sections[label].append(pull_request)
                 break
         else:
@@ -34,17 +36,25 @@ def generate_changelog(pull_requests: list[PullRequest], config: Config) -> str:
             changelog += config.change_template.format(pull_request=pull_request) + "\n"
         changelog += "\n"
 
+    if config.changelog_authors:
+        changelog += generate_contributors(pull_requests, config)
+        changelog += "\n"
+
+    return changelog
+
+
+def generate_contributors(pull_requests: list[PullRequest], config: Config) -> str:
+    contributors = ""
     authors = {
         pull_request.author
         for pull_request in pull_requests
         if pull_request.author not in config.changelog_ignore_authors
     }
     if authors:
-        changelog += "### Contributors\n"
+        contributors += "### Contributors\n"
         for author in sorted(authors):
-            changelog += f"- [@{author}](https://github.com/{author})\n"
-
-    return changelog
+            contributors += f"- [@{author}](https://github.com/{author})\n"
+    return contributors
 
 
 def add_or_update_entry(
