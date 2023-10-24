@@ -26,10 +26,22 @@ app = typer.Typer()
 
 
 @app.command()
-def release(repo: Path = typer.Argument(default=Path("."))):
+def release(
+    repo: Path = typer.Argument(default=Path(".")),
+    major: bool = False,
+    minor: bool = False,
+    patch: bool = False,
+):
     """
     Create a new release.
+
+    If no version bump is provided, via `--major`, `--minor`, or `--patch`, the version bump will
+    be detected based on the pull request labels.
     """
+    if sum([major, minor, patch]) > 1:
+        typer.echo("Only one of --major, --minor, or --patch can be provided")
+        raise typer.Exit(1)
+
     versions = get_versions(repo)
     previous_version = get_latest_version(versions)
     typer.echo(f"Found previous version {previous_version}")
@@ -89,13 +101,14 @@ def release(repo: Path = typer.Argument(default=Path("."))):
 
 
 @app.command()
-def entry(
+def changelog(
     repo: Path = typer.Argument(default=Path(".")),
     version: str = None,
     skip_existing: bool = False,
 ):
     """
-    Generate a changelog entry for a version.
+    Generate the changelog for a version.
+
     If not provided, the current local version from the pyproject.toml file will be used.
     """
     if version is None:
@@ -213,7 +226,7 @@ def contributors(
 
 
 @app.command()
-def update(
+def backfill(
     repo: Path = typer.Argument(default=Path(".")),
     update_existing: bool = False,
     oldest: str = None,
