@@ -13,7 +13,7 @@ Prepares a new release, which:
 - Adds the changelog entry into `CHANGELOG.md`
 
 ```
-rooster release <path>
+rooster release [<path>] [--bump major|minor|patch]
 ```
 
 ### Generate a changelog entry for a release
@@ -21,21 +21,14 @@ rooster release <path>
 Generates a single changelog entry for the current or given version
 
 ```
-rooster entry <path> [<version>]
+rooster changelog <path> [--version <version>]
 ```
 
-### Generate the changelog
+### Generate the contributor list for a release
 
-Updates the `CHANGELOG.md` file for all releases
-
-```
-rooster backfill <path>
-```
-
-### Sync the changelog to GitHub Releases
-
-Updates release bodies on GitHub to match the entries in the `CHANGELOG.md` file
+Generates a contributor list for the current or given version
 
 ```
-rooster sync <path>
+rooster contributors <path> [--verison <version>]
 ```
+
