@@ -5,15 +5,14 @@ import typer
 
 from rooster._changelog import (
     add_or_update_entry,
-    entry_to_standalone,
     extract_entry,
     generate_changelog,
     generate_contributors,
-    get_versions_from_changelog,
 )
 from rooster._config import Config
 from rooster._git import get_commits_between, get_remote_url
-from rooster._github import get_pull_requests_for_commits, get_release, parse_remote_url
+from rooster._github import get_pull_requests_for_commits, parse_remote_url
+from rooster._pyproject import PyProjectError, update_pyproject_version
 from rooster._versions import (
     BumpType,
     Version,
@@ -22,7 +21,6 @@ from rooster._versions import (
     get_previous_version,
     versions_from_git_tags,
 )
-from rooster._pyproject import update_pyproject_version, PyProjectError
 
 app = typer.Typer()
 
