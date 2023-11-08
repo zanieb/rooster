@@ -192,6 +192,8 @@ def contributors(
     Generate a contributor list for a version.
 
     If not provided, the version from the `pyproject.toml` file will be used.
+
+    Only includes contributors that authored a commit between the given version and one before it.
     """
     if version is None:
         # Get the version from the pyproject file

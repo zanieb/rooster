@@ -8,9 +8,9 @@
 
 Prepares a new release, which:
 
-- Bumps the version
-- Generates a changelog entry for the release
-- Adds the changelog entry into `CHANGELOG.md`
+- Determines a new version number
+- Generates a changelog entry for the release and adds to `CHANGELOG.md`
+- Updates the version number in `pyproject.toml`
 
 ```
 rooster release [<path>] [--bump major|minor|patch]
@@ -18,7 +18,7 @@ rooster release [<path>] [--bump major|minor|patch]
 
 ### Generate a changelog entry for a release
 
-Generates a single changelog entry for the current or given version
+Generates a changelog entry for the current or given version
 
 ```
 rooster changelog <path> [--version <version>]
