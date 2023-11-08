@@ -11,7 +11,7 @@ from rooster._changelog import (
     generate_contributors,
     get_versions_from_changelog,
 )
-from rooster._config import get_config
+from rooster._config import Config
 from rooster._git import get_commits_between, get_remote_url
 from rooster._github import get_pull_requests_for_commits, get_release, parse_remote_url
 from rooster._versions import (
@@ -20,8 +20,9 @@ from rooster._versions import (
     bump_version,
     get_latest_version,
     get_previous_version,
-    get_versions,
+    versions_from_git_tags,
 )
+from rooster._pyproject import update_pyproject_version, PyProjectError
 
 app = typer.Typer()
 
@@ -33,23 +34,34 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
 
     If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
-    versions = get_versions(repo)
-    previous_version = get_latest_version(versions)
-    typer.echo(f"Found previous version {previous_version}")
+    config = Config.from_directory(repo)
 
-    changes = list(get_commits_between(repo, previous_version))
-    typer.echo(f"Found {len(changes)} commits since last release")
+    # Get the last release version
+    versions = versions_from_git_tags(repo)
+    last_version = get_latest_version(versions)
+    if last_version:
+        typer.echo(f"Found last version tag {last_version}.")
+    else:
+        typer.echo("It looks like there are no version tags for this project.")
 
+    # Get the commits since the last release
+    changes = list(get_commits_between(repo, last_version))
+    since = "since last release" if last_version else "in the project"
+    typer.echo(f"Found {len(changes)} commits {since}.")
+
+    # Determine the GitHub repository to read
     owner, repo_name = parse_remote_url(get_remote_url(repo))
 
-    typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
+    # Collect pull requests corresponding to each commit
+    typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
+    # Collect the unique set of labels changed
     labels = set()
     for pull_request in pull_requests:
         labels.update(pull_request.labels)
 
-    config = get_config(repo)
+    # Determine the version bump type based on the labels or user provided choice
     if bump:
         bump_type = bump
     else:
@@ -73,11 +85,12 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
 
     new_version = bump_version(
         # If there is no previous version, start at 0.0.0
-        previous_version or Version("0.0.0"),
+        last_version or Version("0.0.0"),
         bump_type,
     )
-    typer.echo(f"Creating new version {new_version}")
+    typer.echo(f"Using new version {new_version}")
 
+    # Generate a changelog entry for the version
     changelog = generate_changelog(pull_requests, config)
     changelog_file = repo.joinpath("CHANGELOG.md")
     if not changelog_file.exists():
@@ -93,6 +106,13 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
 
     typer.echo("Updated changelog")
 
+    try:
+        update_pyproject_version(repo.joinpath("pyproject.toml"), new_version)
+        typer.echo("Updated version in pyproject.toml")
+    except PyProjectError as exc:
+        typer.echo(f"Failed to update pyproject.toml: {exc}")
+        raise typer.Exit(1)
+
 
 @app.command()
 def changelog(
@@ -103,7 +123,7 @@ def changelog(
     """
     Generate the changelog for a version.
 
-    If not provided, the current local version from the pyproject.toml file will be used.
+    If not provided, the version from the `pyproject.toml` file will be used.
     """
     if version is None:
         # Get the version from the pyproject file
@@ -121,7 +141,7 @@ def changelog(
     # Parse the version
     version = Version(version)
 
-    versions = get_versions(repo)
+    versions = versions_from_git_tags(repo)
     previous_version = get_previous_version(versions, version)
     if previous_version:
         typer.echo(f"Found previous version {previous_version}")
@@ -153,14 +173,13 @@ def changelog(
             pull_requests = [
                 pr for pr in pull_requests if f"[#{pr.number}]" not in existing_entry
             ]
-            breakpoint()
             skipped = previous_count - len(pull_requests)
             if skipped:
                 typer.echo(
                     f"Excluding {skipped} pull requests already in changelog entry for {version}"
                 )
 
-    config = get_config(repo)
+    config = Config.from_directory(repo)
 
     changelog = generate_changelog(pull_requests, config)
     print(changelog)
@@ -173,7 +192,8 @@ def contributors(
 ):
     """
     Generate a contributor list for a version.
-    If not provided, the current local version from the pyproject.toml file will be used.
+
+    If not provided, the version from the `pyproject.toml` file will be used.
     """
     if version is None:
         # Get the version from the pyproject file
@@ -191,7 +211,7 @@ def contributors(
     # Parse the version
     version = Version(version)
 
-    versions = get_versions(repo)
+    versions = versions_from_git_tags(repo)
     previous_version = get_previous_version(versions, version)
     if previous_version:
         typer.echo(f"Found previous version {previous_version}")
@@ -214,7 +234,7 @@ def contributors(
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
-    config = get_config(repo)
+    config = Config.from_directory(repo)
 
     print(generate_contributors(pull_requests, config))
 
@@ -227,9 +247,10 @@ def backfill(
 ):
     """
     Update the changelog with all of the releases in the repository.
+
     Releases are discovered by tags parsable as versions.
     """
-    tag_versions = get_versions(repo)
+    tag_versions = versions_from_git_tags(repo)
     changelog_file = repo.joinpath("CHANGELOG.md")
     if not changelog_file.exists():
         changelog_file.write_text("# Changelog\n\n")
@@ -238,7 +259,7 @@ def backfill(
     changelog = changelog_file.read_text()
     changelog_versions = get_versions_from_changelog(changelog)
 
-    config = get_config(repo)
+    config = Config.from_directory(repo)
     owner, repo_name = parse_remote_url(get_remote_url(repo))
 
     for version in sorted(tag_versions, reverse=True):

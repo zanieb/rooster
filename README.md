@@ -32,3 +32,6 @@ Generates a contributor list for the current or given version
 rooster contributors <path> [--verison <version>]
 ```
 
+### Caching
+
+Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may disable this behavior with `ROOSTER_NO_CACHE=1`.

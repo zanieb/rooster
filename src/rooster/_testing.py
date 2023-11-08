@@ -1,5 +1,5 @@
 """
-Utilities for testing
+Utilities for testing Rooster internals.
 """
 
 import subprocess
@@ -11,6 +11,12 @@ import pytest
 
 @pytest.fixture
 def git_directory(tmp_path: Path) -> Path:
+    """
+    An empty git project in a temporary directory.
+
+    Configures `git` user for making commits.
+    Uses `main` as the default branch name.
+    """
     subprocess.check_call(["git", "init", "-b", "main"], cwd=tmp_path)
     subprocess.check_call(
         ["git", "config", "user.email", "test@example.com"], cwd=tmp_path

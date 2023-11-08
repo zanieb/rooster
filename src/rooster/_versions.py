@@ -1,3 +1,7 @@
+"""
+Utilities for working with version numbers.
+"""
+
 from enum import Enum
 from pathlib import Path
 
@@ -12,13 +16,21 @@ class BumpType(Enum):
     patch = "patch"
 
 
-def get_versions(repo: Path) -> list[Version]:
+def versions_from_git_tags(repo: Path) -> list[Version]:
+    """
+    Get versions of the project from git tags.
+    """
     tags = get_tags(repo)
     versions = parse_versions(tags)
     return versions
 
 
 def parse_versions(version_strings: list[str]) -> list[Version]:
+    """
+    Parse version strings typed, validated objects.
+
+    Invalid versions will be silently ignored.
+    """
     versions = []
     for version in version_strings:
         try:
@@ -30,12 +42,18 @@ def parse_versions(version_strings: list[str]) -> list[Version]:
 
 
 def get_latest_version(versions: list[Version]) -> Version | None:
+    """
+    Get the newest version from a collection of versions.
+    """
     if not versions:
         return None
     return sorted(versions, reverse=True)[0]
 
 
 def get_previous_version(versions: list[Version], version: Version) -> Version | None:
+    """
+    Get the version preceding a given version from a collection of versions.
+    """
     if version not in versions:
         # Ensure the given version is included (but do not modify the given list)
         versions = [version] + versions
@@ -47,6 +65,9 @@ def get_previous_version(versions: list[Version], version: Version) -> Version |
 
 
 def bump_version(version: Version, bump_type: BumpType) -> Version:
+    """
+    Create a new version from a preceding one, increasing the given component.
+    """
     # Pull the release section from the version and increment the appropriate number
     release = list(version.release)
 
@@ -75,9 +96,4 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
     # We do not include other sections like dev/local/post since we are publishing
     # a new version. We could allow doing so in a separate function but then we
     # would need to construct the object again.
-
     return Version("".join(parts))
-
-
-def update_version(new_version: Version) -> None:
-    pass

@@ -9,7 +9,7 @@ import textwrap
 
 import httpx
 
-from rooster._cache import graphql_http_client
+from rooster._cache import cached_graphql_client
 from rooster._git import git
 
 TOKEN_REGEX = re.compile(r"Token:\s(.*)")
@@ -44,7 +44,9 @@ class Release:
 @functools.cache
 def get_github_token() -> str:
     """
-    Retrieve the current GitHub token from the `gh` CLI.
+    Retrieve the current GitHub token from the `gh` CLI or `GITHUB_TOKEN` environment variable.
+
+    This function is cached and should only run once invocation of `rooster`.
     """
     if "GITHUB_TOKEN" in os.environ:
         return os.environ["GITHUB_TOKEN"]
@@ -83,6 +85,9 @@ def get_github_token() -> str:
 
 
 def _graphql(client: httpx.Client, query: str, variables: dict[str, object]):
+    """
+    Perform a GitHub GraphQL request.
+    """
     github_token = get_github_token()
 
     response = (
@@ -103,6 +108,9 @@ def _graphql(client: httpx.Client, query: str, variables: dict[str, object]):
 
 
 def parse_remote_url(remote_url: str) -> tuple[str, str]:
+    """
+    Parse a Git remote URL into owner and repository components.
+    """
     parts = remote_url.split("/")
     owner = parts[-2]
     repo = parts[-1]
@@ -114,6 +122,15 @@ def parse_remote_url(remote_url: str) -> tuple[str, str]:
 def get_pull_requests_for_commits(
     owner, repo_name, commits: list[git.Commit]
 ) -> list[PullRequest]:
+    """
+    Retrieve the corresponding pull requests for a list of commits.
+
+    Pull requests are retrieved in bulk, but GitHub enforces a page size of ~100 items
+    so multiple HTTP requests may be made to retrieve all pull requests.
+
+    This method [caches](`rooster._cache`) responses from GitHub to disk to avoid
+    excessive requests on repeated invocations of `rooster`.
+    """
     pull_requests = []
     seen_commits = 0
     expected_commits = {str(commit.id) for commit in commits}
@@ -161,7 +178,7 @@ def get_pull_requests_for_commits(
         """
     )
 
-    with graphql_http_client() as client:
+    with cached_graphql_client() as client:
         first_commit = commits[0]
         page_start = None
 
