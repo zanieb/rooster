@@ -16,7 +16,7 @@ class Config(pydantic.BaseModel):
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
 
-    changelog_authors: bool = True
+    changelog_contributors: bool = True
     changelog_sections: dict[str, str] = {
         "breaking": "Breaking changes",
         "feature": "New features",

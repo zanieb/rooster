@@ -36,7 +36,7 @@ def generate_changelog(pull_requests: list[PullRequest], config: Config) -> str:
             changelog += config.change_template.format(pull_request=pull_request) + "\n"
         changelog += "\n"
 
-    if config.changelog_authors:
+    if config.changelog_contributors:
         changelog += generate_contributors(pull_requests, config)
         changelog += "\n"
 
