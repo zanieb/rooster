@@ -2,12 +2,11 @@
 Utilities for working with version numbers.
 """
 
-import tomllib
-
 from enum import Enum
 from pathlib import Path
-
 from typing import Any
+
+import tomllib
 from packaging.version import InvalidVersion, Version
 
 from rooster._git import get_tags

@@ -19,8 +19,8 @@ from rooster._versions import (
     bump_version,
     get_latest_version,
     get_previous_version,
-    versions_from_git_tags,
     update_file_version,
+    versions_from_git_tags,
 )
 
 app = typer.Typer()
