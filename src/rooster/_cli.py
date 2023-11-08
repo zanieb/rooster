@@ -12,7 +12,11 @@ from rooster._changelog import (
 from rooster._config import Config
 from rooster._git import get_commits_between, get_remote_url
 from rooster._github import get_pull_requests_for_commits, parse_remote_url
-from rooster._pyproject import PyProjectError, update_pyproject_version
+from rooster._pyproject import (
+    PyProjectError,
+    update_pyproject_version,
+    get_pyproject_version,
+)
 from rooster._versions import (
     BumpType,
     Version,
@@ -89,15 +93,12 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
-    changelog = generate_changelog(pull_requests, config)
-    changelog_file = repo.joinpath("CHANGELOG.md")
-    if not changelog_file.exists():
-        changelog_file.write_text("# Changelog\n\n")
-        typer.echo("Created new changelog file")
+    release_changelog = generate_changelog(pull_requests, config)
+    changelog_file = ensure_changelog_exists(repo)
 
-    update_existing_changelog = changelog_file.read_text()
+    current_changelog = changelog_file.read_text()
     new_changelog = add_or_update_entry(
-        new_version, update_existing_changelog, changelog
+        new_version, current_changelog, release_changelog
     ).strip()
 
     changelog_file.write_text(new_changelog)
@@ -116,7 +117,8 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
 def changelog(
     repo: Path = typer.Argument(default=Path(".")),
     version: str = None,
-    skip_existing: bool = False,
+    merge: bool = True,
+    write: bool = False,
 ):
     """
     Generate the changelog for a version.
@@ -132,12 +134,16 @@ def changelog(
             )
             raise typer.Exit(1)
 
-        pyproject = tomllib.loads(pyproject_path.read_text())
-        version = pyproject["project"]["version"]
-        typer.echo(f"Found version {version}")
+        try:
+            version = get_pyproject_version(pyproject_path)
+        except PyProjectError as exc:
+            typer.echo(f"Failed to read pyproject.toml: {exc}")
+            raise typer.Exit(1)
+        typer.echo(f"Found version {version} in the pyproject.toml")
 
-    # Parse the version
-    version = Version(version)
+    else:
+        # Parse the version
+        version = Version(version)
 
     versions = versions_from_git_tags(repo)
     previous_version = get_previous_version(versions, version)
@@ -163,7 +169,7 @@ def changelog(
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
     changelog_file = repo.joinpath("CHANGELOG.md")
-    if skip_existing and changelog_file.exists():
+    if merge and changelog_file.exists():
         existing_changelog = changelog_file.read_text()
         existing_entry = extract_entry(existing_changelog, version)
         if existing_entry:
@@ -179,8 +185,22 @@ def changelog(
 
     config = Config.from_directory(repo)
 
-    changelog = generate_changelog(pull_requests, config)
-    print(changelog)
+    version_changelog = generate_changelog(pull_requests, config)
+
+    if not write:
+        print()
+        print(version_changelog)
+        return
+
+    if write:
+        changelog_file = ensure_changelog_exists(repo)
+        current_changelog = changelog_file.read_text()
+        new_changelog = add_or_update_entry(
+            version, current_changelog, version_changelog
+        ).strip()
+
+        changelog_file.write_text(new_changelog)
+        typer.echo(f"Wrote changelog entry for {version}")
 
 
 @app.command()
@@ -204,9 +224,12 @@ def contributors(
             )
             raise typer.Exit(1)
 
-        pyproject = tomllib.loads(pyproject_path.read_text())
-        version = pyproject["project"]["version"]
-        typer.echo(f"Found version {version}")
+        try:
+            version = get_pyproject_version(pyproject_path)
+        except PyProjectError as exc:
+            typer.echo(f"Failed to read pyproject.toml: {exc}")
+            raise typer.Exit(1)
+        typer.echo(f"Found version {version} in the pyproject.toml")
 
     # Parse the version
     version = Version(version)
@@ -236,4 +259,13 @@ def contributors(
 
     config = Config.from_directory(repo)
 
+    print()
     print(generate_contributors(pull_requests, config))
+
+
+def ensure_changelog_exists(repo: Path):
+    changelog_file = repo.joinpath("CHANGELOG.md")
+    if not changelog_file.exists():
+        changelog_file.write_text("# Changelog\n\n")
+        typer.echo("Created new changelog file")
+    return changelog_file
