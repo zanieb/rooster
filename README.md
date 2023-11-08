@@ -8,34 +8,30 @@
 
 Prepares a new release, which:
 
-- Bumps the version
-- Generates a changelog entry for the release
-- Adds the changelog entry into `CHANGELOG.md`
+- Determines a new version number
+- Generates a changelog entry for the release and adds to `CHANGELOG.md`
+- Updates the version number in `pyproject.toml`
 
 ```
-rooster release <path>
+rooster release [<path>] [--bump major|minor|patch]
 ```
 
 ### Generate a changelog entry for a release
 
-Generates a single changelog entry for the current or given version
+Generates a changelog entry for the current or given version
 
 ```
-rooster entry <path> [<version>]
+rooster changelog <path> [--version <version>]
 ```
 
-### Generate the changelog
+### Generate the contributor list for a release
 
-Updates the `CHANGELOG.md` file for all releases
-
-```
-rooster backfill <path>
-```
-
-### Sync the changelog to GitHub Releases
-
-Updates release bodies on GitHub to match the entries in the `CHANGELOG.md` file
+Generates a contributor list for the current or given version
 
 ```
-rooster sync <path>
+rooster contributors <path> [--verison <version>]
 ```
+
+### Caching
+
+Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may disable this behavior with `ROOSTER_NO_CACHE=1`.

@@ -1,6 +1,7 @@
 import contextlib
 import hashlib
 import json
+import os
 
 import hishel
 import httpx
@@ -14,6 +15,10 @@ class GraphQLCacheController(hishel.Controller):
         self._cacheable_methods = ["POST"]
 
     def is_cachable(self, request: Request, response: Response) -> bool:
+        # Allow the cache to be disabled
+        if os.environ.get("ROOSTER_NO_CACHE"):
+            return False
+
         # Since GraphQL always returns a 200, we check the response body for errors
         error_in_response_body = False
         try:
@@ -24,7 +29,7 @@ class GraphQLCacheController(hishel.Controller):
 
 
 @contextlib.contextmanager
-def graphql_http_client():
+def cached_graphql_client():
     """
     A HTTP client with support for caching GraphQL requests.
 
@@ -43,7 +48,7 @@ def graphql_http_client():
 def _generate_key_patch(request: Request) -> str:
     """
     Patches Hishel's cache key generation to include the request body for GraphQL requests
-    which are always hitting the same endpoint.
+    which always use the same endpoint unlike traditional REST API requests.
     """
     base_key = _generate_key(request)
     hash = hashlib.new("sha256")
@@ -56,5 +61,6 @@ def _generate_key_patch(request: Request) -> str:
 
 # Eek! Hishel doesn't let you change this so I patch it for now instead of implementing
 # the whole transport again
+# https://github.com/karpetrosyan/hishel/issues/75
 _generate_key = hishel._sync._transports.generate_key
 hishel._sync._transports.generate_key = _generate_key_patch

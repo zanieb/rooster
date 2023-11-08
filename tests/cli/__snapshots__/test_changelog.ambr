@@ -1,5 +1,5 @@
 # serializer version: 1
-# name: test_entry_no_remote
+# name: test_changelog_no_remote
   dict({
     'exit_code': 1,
     'stderr': '',
@@ -10,7 +10,7 @@
     ''',
   })
 # ---
-# name: test_entry_no_version
+# name: test_changelog_no_version
   dict({
     'exit_code': 1,
     'stderr': '',
@@ -22,7 +22,7 @@
     ''',
   })
 # ---
-# name: test_entry_no_version_no_pyproject
+# name: test_changelog_no_version_no_pyproject
   dict({
     'exit_code': 1,
     'stderr': '',
