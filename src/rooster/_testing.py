@@ -78,9 +78,13 @@ def mock_project(git_directory: Path, mock_pyproject: Path) -> Path:
     # Create a bad tag that should be ignored
     create_tags(git_directory, ["foo"])
 
-    empty_commit(git_directory, "Commit {commit_number} should be for the next release")
+    empty_commit(
+        git_directory, f"Commit {commit_number} should be for the next release"
+    )
     commit_number += 1
-    empty_commit(git_directory, "Commit {commit_number} should be for the next release")
+    empty_commit(
+        git_directory, f"Commit {commit_number} should be for the next release"
+    )
     yield git_directory
 
 
