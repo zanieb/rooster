@@ -1,0 +1,34 @@
+# serializer version: 1
+# name: test_changelog_no_remote
+  dict({
+    'exit_code': 1,
+    'stderr': '',
+    'stdout': '''
+      Found 8 commits
+      No remote found; cannot retrieve pull requests to generate changelog entry
+  
+    ''',
+  })
+# ---
+# name: test_changelog_no_version
+  dict({
+    'exit_code': 1,
+    'stderr': '',
+    'stdout': '''
+      Found version 0.2.0
+      Found 8 commits
+      No remote found; cannot retrieve pull requests to generate changelog entry
+  
+    ''',
+  })
+# ---
+# name: test_changelog_no_version_no_pyproject
+  dict({
+    'exit_code': 1,
+    'stderr': '',
+    'stdout': '''
+      No pyproject.toml file found; provide a version to generate an entry for.
+  
+    ''',
+  })
+# ---
