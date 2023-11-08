@@ -29,6 +29,9 @@ class Config(pydantic.BaseModel):
         str
     ) = "- {pull_request.title} ([#{pull_request.number}]({pull_request.url}))"
 
+    # Paths to files to replace versions at
+    version_files: list[Path] = []
+
     @pydantic.validator("changelog_sections", always=True)
     def require_unknown_key(cls, value):
         value.setdefault("__unknown__", "Other changes")

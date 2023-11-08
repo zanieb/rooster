@@ -20,6 +20,7 @@ from rooster._versions import (
     get_latest_version,
     get_previous_version,
     versions_from_git_tags,
+    update_file_version,
 )
 
 app = typer.Typer()
@@ -110,6 +111,10 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
     except PyProjectError as exc:
         typer.echo(f"Failed to update pyproject.toml: {exc}")
         raise typer.Exit(1)
+
+    for path in config.version_files:
+        update_file_version(path, last_version, new_version)
+        typer.echo(f"Updated version in {path}")
 
 
 @app.command()

@@ -2,9 +2,12 @@
 Utilities for working with version numbers.
 """
 
+import tomllib
+
 from enum import Enum
 from pathlib import Path
 
+from typing import Any
 from packaging.version import InvalidVersion, Version
 
 from rooster._git import get_tags
@@ -97,3 +100,87 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
     # a new version. We could allow doing so in a separate function but then we
     # would need to construct the object again.
     return Version("".join(parts))
+
+
+def update_file_version(path: Path, old_version: Version, new_version: Version) -> None:
+    if path.name.lower() == "cargo.toml":
+        update_toml_version(path, "package.version", old_version, new_version)
+    elif path.name.lower() == "pyproject.toml":
+        # Try the standard format
+        try:
+            return update_toml_version(
+                path, "project.version", old_version, new_version
+            )
+        except KeyError:
+            pass
+
+        # Then try the Poetry format
+        try:
+            return update_toml_version(
+                path, "tool.poetry.version", old_version, new_version
+            )
+        except KeyError:
+            raise ValueError(
+                f"Could not find `project.version` or `tool.poetry.version` at {path}."
+            )
+
+    elif path.name.lower().endswith(".md") or path.name.lower().endswith(".txt"):
+        update_text_version(path, old_version, new_version)
+    else:
+        raise ValueError(
+            f"Unsupported version update file {path.name}; expected 'Cargo.toml', 'pyproject.toml', '*.txt', or '*.md' file"
+        )
+
+
+def update_text_version(path: Path, old_version: Version, new_version: Version) -> None:
+    """
+    Update the version in a basic text file.
+    """
+    contents = path.read_text()
+    path.write_text(contents.replace(str(old_version), str(new_version)))
+
+
+def update_toml_version(
+    path: Path, key: str, old_version: Version, new_version: Version
+) -> None:
+    """
+    Update the version in a toml file.
+    """
+    contents = path.read_text()
+    parsed = tomllib.loads(contents)
+
+    # First check for the key to avoid replacing the wrong thing
+    try:
+        found_old_version = _get_nested_key(parsed, key)
+    except KeyError:
+        raise KeyError(f"{key} not found in {path}")
+
+    # Ensure the contents matches the expected old version
+    if Version(found_old_version) != old_version:
+        raise Version(
+            f"Mismatched version in {path}::{key}; expected {old_version} found {found_old_version}"
+        )
+
+    # Update with a string replacement to avoid reformatting the whole file
+    contents = contents.replace(
+        f'version = "{old_version}"', f'version = "{new_version}"', 1
+    )
+
+    # Confirm we updated the correct key
+    new_parsed = tomllib.loads(contents)
+    found_new_version = _get_nested_key(new_parsed, key)
+    if found_new_version != str(new_version):
+        raise RuntimeError(
+            f"Failed safety check when updating version at {path}::{key}; expected {new_version} found {found_new_version}"
+        )
+
+    # Write the update
+    path.write_text(contents)
+
+
+def _get_nested_key(source: dict[str, Any], key: str):
+    current = source
+    for name in key.split("."):
+        current = current[name]
+
+    return current
