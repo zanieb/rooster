@@ -111,12 +111,18 @@ def parse_remote_url(remote_url: str) -> tuple[str, str]:
     """
     Parse a Git remote URL into owner and repository components.
     """
-    parts = remote_url.split("/")
-    owner = parts[-2]
-    repo = parts[-1]
-    if repo.endswith(".git"):
-        repo = repo[:-4]
-    return owner, repo
+    ssh_prefix = "git@github.com:"
+    if remote_url.startswith(ssh_prefix):
+        owner_slash_repo = remote_url[len(ssh_prefix) :]
+        owner, repo = owner_slash_repo.split("/")
+        return owner, repo
+    else:
+        parts = remote_url.split("/")
+        owner = parts[-2]
+        repo = parts[-1]
+        if repo.endswith(".git"):
+            repo = repo[:-4]
+        return owner, repo
 
 
 def get_pull_requests_for_commits(
