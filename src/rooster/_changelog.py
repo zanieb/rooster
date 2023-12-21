@@ -17,13 +17,14 @@ def generate_changelog(pull_requests: list[PullRequest], config: Config) -> str:
         for label in pull_request.labels:
             if label in config.changelog_ignore_labels:
                 break
-        # Iterate in-order of changelog sections to support user-configured precedence
-        for label in config.changelog_sections:
-            if label in pull_request.labels:
-                sections[label].append(pull_request)
-                break
         else:
-            sections["__unknown__"].append(pull_request)
+            # Iterate in-order of changelog sections to support user-configured precedence
+            for label in config.changelog_sections:
+                if label in pull_request.labels:
+                    sections[label].append(pull_request)
+                    break
+            else:
+                sections["__unknown__"].append(pull_request)
 
     for section, pull_requests in sections.items():
         # Omit empty sections
