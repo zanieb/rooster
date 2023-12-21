@@ -108,7 +108,9 @@ def ensure_spacing(changelog: str) -> str:
     # Sloppily ensure we don't have too much spacing
     while "\n\n\n" in changelog:
         changelog = changelog.replace("\n\n\n", "\n\n")
-    return changelog
+
+    # Ensure we always end with a single newline
+    return changelog.rstrip("\n") + "\n"
 
 
 def get_versions_from_changelog(changelog: str) -> list[Version]:
