@@ -40,4 +40,12 @@ def get_pyproject_version(path: Path) -> Version:
     """
     contents = path.read_text()
     parsed = tomllib.loads(contents)
+
+    # We could consider supporting Poetry projects, but let's stick to the standards for now.
+    if "project" not in parsed:
+        raise PyProjectError("Missing `project` section.")
+
+    if "version" not in parsed["project"]:
+        raise PyProjectError("Missing `project.version` field.")
+
     return Version(parsed["project"]["version"])
