@@ -16,6 +16,7 @@ class Config(pydantic.BaseModel):
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
 
+    changelog_file: str = "CHANGELOG.md"
     changelog_contributors: bool = True
     changelog_sections: dict[str, str] = {
         "breaking": "Breaking changes",
@@ -31,6 +32,9 @@ class Config(pydantic.BaseModel):
 
     # Paths to files to replace versions at
     version_files: list[Path] = []
+
+    # e.g. "v"
+    version_tag_prefix: str = ""
 
     @pydantic.validator("changelog_sections", always=True)
     def require_unknown_key(cls, value):

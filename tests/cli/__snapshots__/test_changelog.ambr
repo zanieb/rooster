@@ -4,7 +4,7 @@
     'exit_code': 1,
     'stderr': '',
     'stdout': '''
-      Found 8 commits
+      Found 1 commits
       No remote found; cannot retrieve pull requests to generate changelog entry
   
     ''',
@@ -16,7 +16,8 @@
     'stderr': '',
     'stdout': '''
       Found version 0.2.0
-      Found 8 commits
+      Found previous version 0.1.0
+      Found 2 commits since 0.1.0
       No remote found; cannot retrieve pull requests to generate changelog entry
   
     ''',

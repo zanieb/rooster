@@ -9,6 +9,7 @@ from typing import Any
 import tomllib
 from packaging.version import InvalidVersion, Version
 
+from rooster._config import Config
 from rooster._git import get_tags
 
 
@@ -18,11 +19,11 @@ class BumpType(Enum):
     patch = "patch"
 
 
-def versions_from_git_tags(repo: Path) -> list[Version]:
+def versions_from_git_tags(config: Config, repo: Path) -> list[Version]:
     """
     Get versions of the project from git tags.
     """
-    tags = get_tags(repo)
+    tags = get_tags(config, repo)
     versions = parse_versions(tags)
     return versions
 
