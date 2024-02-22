@@ -4,25 +4,28 @@ from typing import Generator
 import pygit2 as git
 from packaging.version import Version
 
-VERSION_REF_PREFIX = "refs/tags/v"
+from rooster._config import Config
+
+TAG_PREFIX = "refs/tags/"
 
 
-def get_tags(target: Path) -> list[str]:
+def get_tags(config: Config, target: Path) -> list[str]:
     repo = git.repository.Repository(target.absolute())
 
     references = repo.listall_references()
     return [
-        _parse_tag_reference(ref)
+        _parse_tag_reference(config, ref)
         for ref in references
-        if ref.startswith(VERSION_REF_PREFIX)
+        if ref.startswith(TAG_PREFIX + config.version_tag_prefix)
     ]
 
 
-def _parse_tag_reference(reference: str) -> str:
-    return reference[len(VERSION_REF_PREFIX) :]
+def _parse_tag_reference(config: Config, reference: str) -> str:
+    return reference[len(TAG_PREFIX + config.version_tag_prefix) :]
 
 
 def get_commits_between(
+    config: Config,
     target: Path,
     first_version: Version | None = None,
     second_version: Version | None = None,
@@ -32,12 +35,20 @@ def get_commits_between(
     """
     repo = git.repository.Repository(target.absolute())
     first_commit = (
-        repo.lookup_reference(VERSION_REF_PREFIX + str(first_version)).peel().id
+        repo.lookup_reference(
+            TAG_PREFIX + config.version_tag_prefix + str(first_version)
+        )
+        .peel()
+        .id
         if first_version is not None
         else None
     )
     second_commit = (
-        repo.lookup_reference(VERSION_REF_PREFIX + str(second_version)).peel().id
+        repo.lookup_reference(
+            TAG_PREFIX + config.version_tag_prefix + str(second_version)
+        )
+        .peel()
+        .id
         if second_version is not None
         # TODO: Lookup main branch
         else repo.revparse_single("main").id

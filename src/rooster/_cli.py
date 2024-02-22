@@ -4,9 +4,8 @@ import tomllib
 import typer
 
 from rooster._changelog import (
-    add_or_update_entry,
-    extract_entry,
-    generate_changelog,
+    Changelog,
+    VersionSection,
     generate_contributors,
 )
 from rooster._config import Config
@@ -31,12 +30,15 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
     """
     Create a new release.
 
+    - Bumps the version in version files
+    - Updates the changelog with changes from the latest version
+
     If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
     config = Config.from_directory(repo)
 
     # Get the last release version
-    versions = versions_from_git_tags(repo)
+    versions = versions_from_git_tags(config, repo)
     last_version = get_latest_version(versions)
     if last_version:
         typer.echo(f"Found last version tag {last_version}.")
@@ -44,7 +46,7 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
         typer.echo("It looks like there are no version tags for this project.")
 
     # Get the commits since the last release
-    changes = list(get_commits_between(repo, last_version))
+    changes = list(get_commits_between(config, repo, last_version))
     since = "since last release" if last_version else "in the project"
     typer.echo(f"Found {len(changes)} commits {since}.")
 
@@ -90,19 +92,22 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
-    changelog = generate_changelog(pull_requests, config)
-    changelog_file = repo.joinpath("CHANGELOG.md")
+    changelog_file = repo.joinpath(config.changelog_file)
     if not changelog_file.exists():
-        changelog_file.write_text("# Changelog\n\n")
-        typer.echo("Created new changelog file")
+        changelog = Changelog.new()
+        typer.echo("Creating new changelog file")
+    else:
+        # Load the existing changelog
+        changelog = Changelog.from_file(changelog_file)
 
-    update_existing_changelog = changelog_file.read_text()
-    new_changelog = add_or_update_entry(
-        new_version, update_existing_changelog, changelog
-    ).strip()
-
-    changelog_file.write_text(new_changelog)
-
+    section = VersionSection.from_pull_requests(
+        document=changelog,
+        config=config,
+        version=new_version,
+        pull_requests=pull_requests,
+    )
+    changelog.insert_version_section(section)
+    changelog_file.write_text(changelog.to_markdown())
     typer.echo("Updated changelog")
 
     try:
@@ -128,6 +133,8 @@ def changelog(
 
     If not provided, the version from the `pyproject.toml` file will be used.
     """
+    config = Config.from_directory(repo)
+
     if version is None:
         # Get the version from the pyproject file
         pyproject_path = repo.joinpath("pyproject.toml")
@@ -138,18 +145,24 @@ def changelog(
             raise typer.Exit(1)
 
         pyproject = tomllib.loads(pyproject_path.read_text())
-        version = pyproject["project"]["version"]
+        version = pyproject.get("project", {}).get("version")
+        if not version:
+            typer.echo(
+                "No version found in the pyproject.toml; provide a version to generate an entry for."
+            )
+            raise typer.Exit(1)
+
         typer.echo(f"Found version {version}")
 
     # Parse the version
     version = Version(version)
 
-    versions = versions_from_git_tags(repo)
+    versions = versions_from_git_tags(config, repo)
     previous_version = get_previous_version(versions, version)
     if previous_version:
         typer.echo(f"Found previous version {previous_version}")
 
-    changes = list(get_commits_between(repo, previous_version))
+    changes = list(get_commits_between(config, repo, previous_version, version))
     if previous_version:
         typer.echo(f"Found {len(changes)} commits since {previous_version}")
     else:
@@ -167,14 +180,18 @@ def changelog(
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
-    changelog_file = repo.joinpath("CHANGELOG.md")
-    if skip_existing and changelog_file.exists():
-        existing_changelog = changelog_file.read_text()
-        existing_entry = extract_entry(existing_changelog, version)
-        if existing_entry:
+    # Load the existing changelog
+    changelog = Changelog.from_file(repo.joinpath(config.changelog_file))
+
+    if skip_existing:
+        existing_section = changelog.get_version_section(version)
+        if existing_section:
+            existing_entries = existing_section.all_entries()
             previous_count = len(pull_requests)
             pull_requests = [
-                pr for pr in pull_requests if f"[#{pr.number}]" not in existing_entry
+                pr
+                for pr in pull_requests
+                if all(f"[#{pr.number}]" not in entry for entry in existing_entries)
             ]
             skipped = previous_count - len(pull_requests)
             if skipped:
@@ -182,10 +199,14 @@ def changelog(
                     f"Excluding {skipped} pull requests already in changelog entry for {version}"
                 )
 
-    config = Config.from_directory(repo)
+    section = VersionSection.from_pull_requests(
+        document=changelog,
+        config=config,
+        version=version,
+        pull_requests=pull_requests,
+    )
 
-    changelog = generate_changelog(pull_requests, config)
-    print(changelog)
+    print(section.as_document().to_markdown())
 
 
 @app.command()
@@ -200,6 +221,7 @@ def contributors(
 
     Only includes contributors that authored a commit between the given version and one before it.
     """
+    config = Config.from_directory(repo)
     if version is None:
         # Get the version from the pyproject file
         pyproject_path = repo.joinpath("pyproject.toml")
@@ -216,12 +238,12 @@ def contributors(
     # Parse the version
     version = Version(version)
 
-    versions = versions_from_git_tags(repo)
+    versions = versions_from_git_tags(config, repo)
     previous_version = get_previous_version(versions, version)
     if previous_version:
         typer.echo(f"Found previous version {previous_version}")
 
-    changes = list(get_commits_between(repo, previous_version))
+    changes = list(get_commits_between(config, repo, previous_version))
     if previous_version:
         typer.echo(f"Found {len(changes)} commits since {previous_version}")
     else:
@@ -242,3 +264,70 @@ def contributors(
     config = Config.from_directory(repo)
 
     print(generate_contributors(pull_requests, config))
+
+
+@app.command()
+def backfill(
+    repo: Path = typer.Argument(default=Path(".")),
+    include_first: bool = False,
+    clear: bool = False,
+    start_version: str = None,
+):
+    """
+    Regenerate the entire changelog.
+    """
+    config = Config.from_directory(repo)
+    start_version = Version(start_version) if start_version else None
+
+    # Generate a changelog entry for the version
+    changelog_file = repo.joinpath(config.changelog_file)
+
+    if clear or not changelog_file.exists():
+        changelog = Changelog.new()
+        typer.echo("Creating new changelog file")
+    else:
+        # Load the existing changelog
+        changelog = Changelog.from_file(changelog_file)
+
+    remote = get_remote_url(repo)
+    if not remote:
+        typer.echo(
+            "No remote found; cannot retrieve pull requests to generate changelog entry"
+        )
+        raise typer.Exit(1)
+
+    owner, repo_name = parse_remote_url(remote)
+    typer.echo(f"Found remote repository {owner}/{repo_name}")
+
+    versions = versions_from_git_tags(config, repo)
+    for i, version in enumerate(versions):
+        previous_version = versions[i - 1] if i > 0 else None
+
+        if start_version:
+            if version < start_version:
+                continue
+
+        changes = list(get_commits_between(config, repo, previous_version, version))
+        if previous_version:
+            typer.echo(
+                f"Found {len(changes)} commits between {previous_version}...{version}"
+            )
+        else:
+            if not include_first:
+                continue
+
+            typer.echo(f"Found {len(changes)} commits before {version}")
+
+        typer.echo(f"Retrieving pull requests for {version}...")
+        pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
+
+        section = VersionSection.from_pull_requests(
+            document=changelog,
+            config=config,
+            version=version,
+            pull_requests=pull_requests,
+        )
+        changelog.insert_version_section(section)
+
+    changelog_file.write_text(changelog.to_markdown())
+    typer.echo("Updated changelog")

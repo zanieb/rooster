@@ -137,6 +137,9 @@ def get_pull_requests_for_commits(
     This method [caches](`rooster._cache`) responses from GitHub to disk to avoid
     excessive requests on repeated invocations of `rooster`.
     """
+    if not commits:
+        return []
+
     pull_requests = []
     seen_commits = 0
     expected_commits = {str(commit.id) for commit in commits}

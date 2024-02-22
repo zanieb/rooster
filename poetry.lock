@@ -228,6 +228,21 @@ files = [
 ]
 
 [[package]]
+name = "marko"
+version = "2.0.2"
+description = "A markdown parser with high extensibility."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "marko-2.0.2-py3-none-any.whl", hash = "sha256:2ebd448ac82636765db49777e735923c799a6d66c75bc4997a922bb4c12e4563"},
+    {file = "marko-2.0.2.tar.gz", hash = "sha256:502df6d827139ea7265d819f4fe3664589f4774997eff758dc38bea4f52350e6"},
+]
+
+[package.extras]
+codehilite = ["pygments"]
+toc = ["python-slugify"]
+
+[[package]]
 name = "mypy"
 version = "1.6.1"
 description = "Optional static typing for Python"
@@ -638,4 +653,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "2ecc3880d0ed4dcee2bdb66b01e46799263d18e21a1007b9a4f4e5cb50a58c3b"
+content-hash = "33a253e1c656a2308f9dc00fa8b02b454a09407306a6ffafc770d69444ddbe6b"
