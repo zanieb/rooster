@@ -213,6 +213,7 @@ def changelog(
 def contributors(
     repo: Path = typer.Argument(default=Path(".")),
     version: str = None,
+    quiet: bool = False,
 ):
     """
     Generate a contributor list for a version.
@@ -221,19 +222,24 @@ def contributors(
 
     Only includes contributors that authored a commit between the given version and one before it.
     """
+
+    def echo(*args):
+        if not quiet:
+            typer.echo(*args)
+
     config = Config.from_directory(repo)
     if version is None:
         # Get the version from the pyproject file
         pyproject_path = repo.joinpath("pyproject.toml")
         if not pyproject_path.exists():
-            typer.echo(
+            echo(
                 "No pyproject.toml file found; provide a version to generate an entry for."
             )
             raise typer.Exit(1)
 
         pyproject = tomllib.loads(pyproject_path.read_text())
         version = pyproject["project"]["version"]
-        typer.echo(f"Found version {version}")
+        echo(f"Found version {version}")
 
     # Parse the version
     version = Version(version)
@@ -241,24 +247,24 @@ def contributors(
     versions = versions_from_git_tags(config, repo)
     previous_version = get_previous_version(versions, version)
     if previous_version:
-        typer.echo(f"Found previous version {previous_version}")
+        echo(f"Found previous version {previous_version}")
 
     changes = list(get_commits_between(config, repo, previous_version))
     if previous_version:
-        typer.echo(f"Found {len(changes)} commits since {previous_version}")
+        echo(f"Found {len(changes)} commits since {previous_version}")
     else:
-        typer.echo(f"Found {len(changes)} commits")
+        echo(f"Found {len(changes)} commits")
 
     remote = get_remote_url(repo)
     if not remote:
-        typer.echo(
+        echo(
             "No remote found; cannot retrieve pull requests to generate changelog entry"
         )
         raise typer.Exit(1)
 
     owner, repo_name = parse_remote_url(remote)
 
-    typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
+    echo(f"Retrieving pull requests for changes from {owner}/{repo_name}")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
     config = Config.from_directory(repo)

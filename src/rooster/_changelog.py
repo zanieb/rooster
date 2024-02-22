@@ -327,7 +327,9 @@ class Entry:
         return self.document.renderer().render_children(self.element)
 
 
-def generate_contributors(pull_requests: list[PullRequest], config: Config) -> str:
+def generate_contributors(
+    pull_requests: list[PullRequest], config: Config, level: int = 2
+) -> str:
     contributors = ""
     authors = {
         pull_request.author
@@ -335,7 +337,7 @@ def generate_contributors(pull_requests: list[PullRequest], config: Config) -> s
         if pull_request.author not in config.changelog_ignore_authors
     }
     if authors:
-        contributors += "### Contributors\n"
+        contributors += "#" * level + " Contributors\n"
         for author in sorted(authors):
             contributors += f"- [@{author}](https://github.com/{author})\n"
     return contributors
