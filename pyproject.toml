@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "rooster"
+name = "rooster-blue"
 version = "0.0.0"
 description = ""
 authors = ["Zanie <contact@zanie.dev>"]
