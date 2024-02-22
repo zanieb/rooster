@@ -99,4 +99,4 @@ jobs:
 
       - name: Check CLI help
         run: |
-          poetry run -- rooster-blue --help
+          poetry run -- rooster --help
