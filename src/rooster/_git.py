@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from typing import Generator
 
@@ -7,6 +8,7 @@ from packaging.version import Version
 from rooster._config import Config
 
 TAG_PREFIX = "refs/tags/"
+BRANCH_NAME = os.getenv("BRANCH_NAME", "main")
 
 
 def get_tags(config: Config, target: Path) -> list[str]:
@@ -51,7 +53,7 @@ def get_commits_between(
         .id
         if second_version is not None
         # TODO: Lookup main branch
-        else repo.revparse_single("main").id
+        else repo.revparse_single(BRANCH_NAME).id
     )
     # Walk backwards from the second commit until we find the first commit
     for commit in repo.walk(second_commit):
