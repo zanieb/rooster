@@ -8,7 +8,6 @@ from httpcore import Request, Response
 
 
 class GraphQLCacheController(hishel.Controller):
-
     def is_cachable(self, request: Request, response: Response) -> bool:
         # Allow the cache to be disabled
         if os.environ.get("ROOSTER_NO_CACHE"):
@@ -34,8 +33,7 @@ def cached_graphql_client():
         transport=hishel.CacheTransport(
             transport=httpx.HTTPTransport(),
             controller=GraphQLCacheController(
-                allow_heuristics=True,
-                cacheable_methods=["POST"]
+                allow_heuristics=True, cacheable_methods=["POST"]
             ),
         ),
         timeout=None,
