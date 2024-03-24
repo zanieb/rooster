@@ -49,7 +49,7 @@ pytest = "^7.4.2"
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.ruff]
+[tool.ruff.lint]
 extend-select = ["I"]
 
 # Ignore line length; the formatter handles it
