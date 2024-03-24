@@ -26,7 +26,11 @@ app = typer.Typer()
 
 
 @app.command()
-def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = None):
+def release(
+    repo: Path = typer.Argument(default=Path(".")),
+    bump: BumpType = None,
+    update_pyproject: bool = True,
+):
     """
     Create a new release.
 
@@ -110,12 +114,13 @@ def release(repo: Path = typer.Argument(default=Path(".")), bump: BumpType = Non
     changelog_file.write_text(changelog.to_markdown())
     typer.echo("Updated changelog")
 
-    try:
-        update_pyproject_version(repo.joinpath("pyproject.toml"), new_version)
-        typer.echo("Updated version in pyproject.toml")
-    except PyProjectError as exc:
-        typer.echo(f"Failed to update pyproject.toml: {exc}")
-        raise typer.Exit(1)
+    if update_pyproject:
+        try:
+            update_pyproject_version(repo.joinpath("pyproject.toml"), new_version)
+            typer.echo("Updated version in pyproject.toml")
+        except PyProjectError as exc:
+            typer.echo(f"Failed to update pyproject.toml: {exc}")
+            raise typer.Exit(1)
 
     for path in config.version_files:
         update_file_version(path, last_version, new_version)
