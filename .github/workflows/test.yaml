@@ -42,6 +42,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -59,3 +61,24 @@ jobs:
       - name: Run tests
         run: |
           poetry run -- pytest tests
+
+      - name: Update changelog
+        run: |
+
+          TAG_NAME="0.0.3"
+
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          git fetch origin main
+
+          poetry run -- rooster release
+          git checkout -b "release/changelog-$TAG_NAME"
+          git commit -am "Update changelog for $TAG_NAME"
+          git push --set-upstream origin HEAD
+
+          gh pr create \
+            --fill
+            --body "See: https://github.com/astral-sh/uv/releases/tag/$TAG_NAME"
+
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
