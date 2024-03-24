@@ -78,7 +78,7 @@ jobs:
           git push --set-upstream origin HEAD
 
           gh pr create \
-            --fill
+            --fill \
             --body "See: https://github.com/astral-sh/uv/releases/tag/$TAG_NAME"
 
         env:
