@@ -59,3 +59,19 @@ jobs:
       - name: Run tests
         run: |
           poetry run -- pytest tests
+
+      - name: Test `rooster changelog`
+        run: |
+          poetry run -- rooster changelog
+
+      - name: Test `rooster contributors`
+        run: |
+          poetry run -- rooster contributors
+
+      - name: Test `rooster release`
+        run: |
+          poetry run -- rooster release
+
+      - name: Test `rooster backfill`
+        run: |
+          poetry run -- rooster backfill
