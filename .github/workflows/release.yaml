@@ -44,23 +44,24 @@ jobs:
           poetry version "${GITHUB_REF#refs/*/}"
           poetry publish --build
 
-      - name: Update changelog
-        run: |
-          poetry install
+      # TODO: This does not work yet because the release tag ends up being newer than the current version
+      # - name: Update changelog
+      #   run: |
+      #     poetry install
 
-          TAG_NAME="${GITHUB_REF#refs/*/}"
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-          git fetch origin main
+      #     TAG_NAME="${GITHUB_REF#refs/*/}"
+      #     git config user.name "$GITHUB_ACTOR"
+      #     git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+      #     git fetch origin main
 
-          poetry run -- rooster release --no-update-pyproject
-          git checkout -b "release/changelog-$TAG_NAME"
-          git commit -am "Update changelog for $TAG_NAME"
-          git push --set-upstream origin HEAD
+      #     poetry run -- rooster release --no-update-pyproject
+      #     git checkout -b "release/changelog-$TAG_NAME"
+      #     git commit -am "Update changelog for $TAG_NAME"
+      #     git push --set-upstream origin HEAD
 
-          gh pr create \
-            --fill \
-            --body "See: https://github.com/zanieb/rooster/releases/tag/$TAG_NAME"
+      #     gh pr create \
+      #       --fill \
+      #       --body "See: https://github.com/zanieb/rooster/releases/tag/$TAG_NAME"
 
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
