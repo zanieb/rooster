@@ -57,3 +57,16 @@ ignore = ["E501"]
 
 # Ignore some codes that break due to pytest fixtures in tests
 per-file-ignores = { "tests/**/*.py" = ["F401", "F811"] }
+
+[tool.rooster]
+major_labels = []  # We do not use the major version number
+minor_labels = []  # We will bump on breaking changes here once more stable
+changelog_ignore_labels = ["internal"]
+changelog_sections.breaking = "Breaking changes"
+changelog_sections.enhancement = "Enhancements"
+changelog_sections.cli = "CLI"
+changelog_sections.configuration = "Configuration"
+changelog_sections.bug = "Bug fixes"
+changelog_sections.documentation = "Documentation"
+changelog_sections.__unknown__ = "Other changes"
+changelog_contributors = false
