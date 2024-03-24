@@ -1,6 +1,6 @@
 # Rooster
 
-**This project is a work in progress and not ready for use**
+**This interface provided by this tool is unstable, we highly recommend pinning your version.**
 
 ## Usage
 
@@ -21,7 +21,7 @@ rooster release [<path>] [--bump major|minor|patch]
 Generates a changelog entry for the current or given version
 
 ```
-rooster changelog <path> [--version <version>]
+rooster changelog [<path>] [--version <version>]
 ```
 
 ### Generate the contributor list for a release
@@ -29,7 +29,7 @@ rooster changelog <path> [--version <version>]
 Generates a contributor list for the current or given version
 
 ```
-rooster contributors <path> [--verison <version>]
+rooster contributors [<path>] [--verison <version>]
 ```
 
 ### Caching
