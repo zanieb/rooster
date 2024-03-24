@@ -33,7 +33,7 @@ class Config(pydantic.BaseModel):
     # Paths to files to replace versions at
     version_files: list[Path] = []
 
-    # e.g. "v"
+    # A prefix to identify tags as versions e.g. "v"
     version_tag_prefix: str = ""
 
     @pydantic.validator("changelog_sections", always=True)
