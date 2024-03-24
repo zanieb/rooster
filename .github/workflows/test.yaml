@@ -15,7 +15,8 @@ on:
       - main
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 # Limit concurrency by workflow/branch combination
 concurrency:
