@@ -43,11 +43,11 @@ jobs:
 
       - name: Lint Python
         run: |
-          poetry run -- ruff check .
+          poetry run -- ruff check
 
       - name: Check Python formatting
         run: |
-          poetry run -- ruff format --check .
+          poetry run -- ruff format --check
 
       - name: Check packaging
         run: |
