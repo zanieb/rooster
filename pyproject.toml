@@ -5,6 +5,7 @@ description = ""
 authors = ["Zanie <contact@zanie.dev>"]
 packages = [{ include = "rooster", from = "src" }]
 readme = "README.md"
+repository = "https://github.com/zanieb/rooster"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Operating System :: OS Independent",
@@ -55,4 +56,4 @@ extend-select = ["I"]
 ignore = ["E501"]
 
 # Ignore some codes that break due to pytest fixtures in tests
-per-file-ignores = {"tests/**/*.py" = ["F401", "F811"]}
+per-file-ignores = { "tests/**/*.py" = ["F401", "F811"] }
