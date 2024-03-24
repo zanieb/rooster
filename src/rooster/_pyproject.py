@@ -1,6 +1,7 @@
 """
 Utilities for interacting with `pyproject.toml` files.
 """
+
 from pathlib import Path
 
 import tomllib
