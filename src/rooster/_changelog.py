@@ -131,6 +131,7 @@ class Changelog(Document):
         renderer = self.renderer()
         elements = cast(list, self.document.children)
         remove = None
+        i = 0
         for i, element in enumerate(tuple(elements)):
             if isinstance(element, marko.block.Heading):
                 if element.level == level:
