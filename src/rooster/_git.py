@@ -51,7 +51,7 @@ def get_commits_between(
         .id
         if second_version is not None
         # TODO: Lookup main branch
-        else repo.revparse_single("main").id
+        else get_latest_commit(repo)
     )
     # Walk backwards from the second commit until we find the first commit
     for commit in repo.walk(second_commit):
@@ -66,3 +66,10 @@ def get_remote_url(target: Path, remote_name: str = "origin") -> str | None:
     if remote_name not in names:
         return None
     return repo.remotes[remote_name].url
+
+
+def get_latest_commit(repo: git.repository.Repository) -> str:
+    try:
+        return repo.revparse_single("main").id
+    except KeyError:
+        return repo.revparse_single("HEAD").id
