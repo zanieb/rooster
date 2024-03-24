@@ -1,6 +1,10 @@
 ## 0.0.2
 
-### Other changes
+### Enhancements
 
 - Improve contribs command ([#17](https://github.com/zanieb/rooster/pull/17))
 
+
+### Other changes
+
+- Improve contribs command ([#17](https://github.com/zanieb/rooster/pull/17))

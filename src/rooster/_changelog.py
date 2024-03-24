@@ -148,7 +148,7 @@ class Changelog(Document):
 
                     # Replace the existing version
                     if version == section.version:
-                        remove = [i]
+                        remove = [i, i + 1]
 
         if remove:
             for _ in range(remove[0], remove[1]):
