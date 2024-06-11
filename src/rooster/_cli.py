@@ -109,7 +109,9 @@ def release(
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
-    changelog_file = Path(changelog_file) or repo.joinpath(config.changelog_file)
+    changelog_file = (
+        Path(changelog_file) if changelog_file else repo.joinpath(config.changelog_file)
+    )
     if not changelog_file.exists():
         changelog = Changelog.new()
         typer.echo("Creating new changelog file")
@@ -330,7 +332,9 @@ def backfill(
     start_version = Version(start_version) if start_version else None
 
     # Generate a changelog entry for the version
-    changelog_file = Path(changelog_file) or repo.joinpath(config.changelog_file)
+    changelog_file = (
+        Path(changelog_file) if changelog_file else repo.joinpath(config.changelog_file)
+    )
 
     if clear or not changelog_file.exists():
         changelog = Changelog.new()
