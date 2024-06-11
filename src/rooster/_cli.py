@@ -48,11 +48,6 @@ def release(
     If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
     config = Config.from_directory(repo)
-    sections = (
-        config.changelog_sections.keys() if not only_sections else set(only_sections)
-    )
-    if without_sections:
-        sections -= set(without_sections)
 
     # Get the last release version
     versions = versions_from_git_tags(config, repo)
@@ -124,7 +119,8 @@ def release(
         config=config,
         version=new_version,
         pull_requests=pull_requests,
-        sections=sections,
+        only_sections=only_sections,
+        without_sections=without_sections,
     )
     changelog.insert_version_section(section)
     changelog_file.write_text(changelog.to_markdown())
@@ -162,11 +158,6 @@ def changelog(
     If not provided, the version from the `pyproject.toml` file will be used.
     """
     config = Config.from_directory(repo)
-    sections = (
-        config.changelog_sections.keys() if not only_sections else set(only_sections)
-    )
-    if without_sections:
-        sections -= set(without_sections)
 
     if version is None:
         # Get the version from the pyproject file
@@ -237,7 +228,8 @@ def changelog(
         config=config,
         version=version,
         pull_requests=pull_requests,
-        sections=sections,
+        only_sections=only_sections,
+        without_sections=without_sections,
     )
 
     print(section.as_document().to_markdown())
@@ -324,11 +316,6 @@ def backfill(
     Regenerate the entire changelog.
     """
     config = Config.from_directory(repo)
-    sections = (
-        config.changelog_sections.keys() if not only_sections else set(only_sections)
-    )
-    if without_sections:
-        sections -= set(without_sections)
     start_version = Version(start_version) if start_version else None
 
     # Generate a changelog entry for the version
@@ -380,7 +367,8 @@ def backfill(
             config=config,
             version=version,
             pull_requests=pull_requests,
-            sections=sections,
+            only_sections=only_sections,
+            without_sections=without_sections,
         )
         changelog.insert_version_section(section)
 
