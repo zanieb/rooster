@@ -30,6 +30,14 @@ def release(
     repo: Path = typer.Argument(default=Path(".")),
     bump: BumpType = None,
     update_pyproject: bool = True,
+    update_version_files: bool = True,
+    changelog_file: str = None,
+    only_sections: list[str] = typer.Option(
+        [], help="Sections to include in the changelog"
+    ),
+    without_sections: list[str] = typer.Option(
+        [], help="Sections to exclude from the changelog"
+    ),
 ):
     """
     Create a new release.
@@ -40,6 +48,11 @@ def release(
     If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
     config = Config.from_directory(repo)
+    sections = (
+        config.changelog_sections.keys() if not only_sections else set(only_sections)
+    )
+    if without_sections:
+        sections -= set(without_sections)
 
     # Get the last release version
     versions = versions_from_git_tags(config, repo)
@@ -96,7 +109,7 @@ def release(
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
-    changelog_file = repo.joinpath(config.changelog_file)
+    changelog_file = Path(changelog_file) or repo.joinpath(config.changelog_file)
     if not changelog_file.exists():
         changelog = Changelog.new()
         typer.echo("Creating new changelog file")
@@ -109,6 +122,7 @@ def release(
         config=config,
         version=new_version,
         pull_requests=pull_requests,
+        sections=sections,
     )
     changelog.insert_version_section(section)
     changelog_file.write_text(changelog.to_markdown())
@@ -122,9 +136,10 @@ def release(
             typer.echo(f"Failed to update pyproject.toml: {exc}")
             raise typer.Exit(1)
 
-    for path in config.version_files:
-        update_file_version(path, last_version, new_version)
-        typer.echo(f"Updated version in {path}")
+    if update_version_files:
+        for path in config.version_files:
+            update_file_version(path, last_version, new_version)
+            typer.echo(f"Updated version in {path}")
 
 
 @app.command()
@@ -132,6 +147,12 @@ def changelog(
     repo: Path = typer.Argument(default=Path(".")),
     version: str = None,
     skip_existing: bool = False,
+    only_sections: list[str] = typer.Option(
+        [], help="Sections to include in the changelog"
+    ),
+    without_sections: list[str] = typer.Option(
+        [], help="Sections to exclude from the changelog"
+    ),
 ):
     """
     Generate the changelog for a version.
@@ -139,6 +160,11 @@ def changelog(
     If not provided, the version from the `pyproject.toml` file will be used.
     """
     config = Config.from_directory(repo)
+    sections = (
+        config.changelog_sections.keys() if not only_sections else set(only_sections)
+    )
+    if without_sections:
+        sections -= set(without_sections)
 
     if version is None:
         # Get the version from the pyproject file
@@ -209,6 +235,7 @@ def changelog(
         config=config,
         version=version,
         pull_requests=pull_requests,
+        sections=sections,
     )
 
     print(section.as_document().to_markdown())
@@ -283,15 +310,27 @@ def backfill(
     include_first: bool = False,
     clear: bool = False,
     start_version: str = None,
+    changelog_file: str = None,
+    only_sections: list[str] = typer.Option(
+        [], help="Sections to include in the changelog"
+    ),
+    without_sections: list[str] = typer.Option(
+        [], help="Sections to exclude from the changelog"
+    ),
 ):
     """
     Regenerate the entire changelog.
     """
     config = Config.from_directory(repo)
+    sections = (
+        config.changelog_sections.keys() if not only_sections else set(only_sections)
+    )
+    if without_sections:
+        sections -= set(without_sections)
     start_version = Version(start_version) if start_version else None
 
     # Generate a changelog entry for the version
-    changelog_file = repo.joinpath(config.changelog_file)
+    changelog_file = Path(changelog_file) or repo.joinpath(config.changelog_file)
 
     if clear or not changelog_file.exists():
         changelog = Changelog.new()
@@ -337,6 +376,7 @@ def backfill(
             config=config,
             version=version,
             pull_requests=pull_requests,
+            sections=sections,
         )
         changelog.insert_version_section(section)
 

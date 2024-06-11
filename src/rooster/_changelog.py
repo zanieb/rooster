@@ -212,10 +212,12 @@ class VersionSection(Section):
         config: Config,
         version: Version,
         pull_requests: Iterable[PullRequest],
+        sections: set[str],
         level: int = 2,
     ) -> Self:
         # Initialize the sections dictionary to match the changelog sections config for
         # ordering
+        requested_sections = sections
         sections = {label: [] for label in config.changelog_sections}
 
         # De-duplicate pull requests and sort into sections
@@ -226,6 +228,8 @@ class VersionSection(Section):
             else:
                 # Iterate in-order of changelog sections to support user-configured precedence
                 for label in config.changelog_sections:
+                    if label not in requested_sections:
+                        continue
                     if label in pull_request.labels:
                         sections[label].append(pull_request)
                         break
@@ -236,6 +240,9 @@ class VersionSection(Section):
         for section, pull_requests in sections.items():
             # Omit empty sections
             if not pull_requests:
+                continue
+
+            if section not in requested_sections:
                 continue
 
             pull_requests = sorted(pull_requests, key=lambda pr: pr.title)
