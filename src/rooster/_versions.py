@@ -41,7 +41,7 @@ def parse_versions(version_strings: list[str]) -> list[Version]:
         except InvalidVersion:
             # Ignore tags that are not valid versions
             pass
-    return versions
+    return list(sorted(versions))
 
 
 def get_latest_version(versions: list[Version]) -> Version | None:
