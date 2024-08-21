@@ -218,7 +218,7 @@ class VersionSection(Section):
     ) -> Self:
         # Initialize the sections dictionary to match the changelog sections config for
         # ordering
-        sections = {label: [] for label in config.changelog_sections}
+        sections = {section: [] for section in config.changelog_sections.values()}
 
         # De-duplicate pull requests and sort into sections
         for pull_request in set(pull_requests):
@@ -229,14 +229,16 @@ class VersionSection(Section):
                     break
             else:
                 # Iterate in-order of changelog sections to support user-configured precedence
-                for label in config.changelog_sections:
+                for label, section in config.changelog_sections.items():
                     if only_sections and label not in only_sections:
                         continue
                     if label in pull_request.labels:
-                        sections[label].append(pull_request)
+                        sections[section].append(pull_request)
                         break
                 else:
-                    sections["__unknown__"].append(pull_request)
+                    sections[
+                        config.changelog_sections.get("__unknown__", "Other changes")
+                    ].append(pull_request)
 
         children = []
         for section, pull_requests in sections.items():
@@ -312,8 +314,7 @@ class EntrySection(Section):
         pull_requests: Iterable[PullRequest],
         level: int = 3,
     ) -> Self:
-        title = config.changelog_sections.get(section)
-        heading = new_heading(title, level)
+        heading = new_heading(section, level)
 
         lines = []
         for pull_request in pull_requests:
@@ -323,7 +324,7 @@ class EntrySection(Section):
         return cls(
             document=document,
             element=heading,
-            title=title,
+            title=section,
             children=(
                 [marko.block.BlankLine]
                 + marko.parse("\n".join(lines)).children
