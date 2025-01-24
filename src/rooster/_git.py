@@ -9,6 +9,12 @@ from rooster._config import Config
 TAG_PREFIX = "refs/tags/"
 
 
+class GitLookupError(Exception):
+    """
+    Error when looking up a requested git object.
+    """
+
+
 def get_tags(config: Config, target: Path) -> list[str]:
     repo = git.repository.Repository(target.absolute())
 
@@ -58,6 +64,11 @@ def get_commits_between(
         if commit.id == first_commit:
             break
         yield commit
+    else:
+        if first_commit:
+            raise GitLookupError(
+                f"Could not find commit {first_commit} ({first_version}) in ancestors of {second_commit}; is the {first_version} tag on a different branch?"
+            )
 
 
 def get_remote_url(target: Path, remote_name: str = "origin") -> str | None:

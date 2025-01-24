@@ -9,7 +9,7 @@ from rooster._changelog import (
     generate_contributors,
 )
 from rooster._config import Config
-from rooster._git import get_commits_between, get_remote_url
+from rooster._git import GitLookupError, get_commits_between, get_remote_url
 from rooster._github import get_pull_requests_for_commits, parse_remote_url
 from rooster._pyproject import PyProjectError, update_pyproject_version
 from rooster._versions import (
@@ -58,7 +58,11 @@ def release(
         typer.echo("It looks like there are no version tags for this project.")
 
     # Get the commits since the last release
-    changes = list(get_commits_between(config, repo, last_version))
+    try:
+        changes = list(get_commits_between(config, repo, last_version))
+    except GitLookupError as exc:
+        typer.echo(f"Failed to find commits: {exc}")
+        raise typer.Exit(1)
     since = "since last release" if last_version else "in the project"
     typer.echo(f"Found {len(changes)} commits {since}.")
 
@@ -186,7 +190,11 @@ def changelog(
     if previous_version:
         typer.echo(f"Found previous version {previous_version}")
 
-    changes = list(get_commits_between(config, repo, previous_version, version))
+    try:
+        changes = list(get_commits_between(config, repo, previous_version, version))
+    except GitLookupError as exc:
+        typer.echo(f"Failed to find commits: {exc}")
+        raise typer.Exit(1)
     if previous_version:
         typer.echo(f"Found {len(changes)} commits since {previous_version}")
     else:
@@ -275,7 +283,11 @@ def contributors(
     if previous_version:
         echo(f"Found previous version {previous_version}")
 
-    changes = list(get_commits_between(config, repo, previous_version))
+    try:
+        changes = list(get_commits_between(config, repo, previous_version))
+    except GitLookupError as exc:
+        typer.echo(f"Failed to find commits: {exc}")
+        raise typer.Exit(1)
     if previous_version:
         echo(f"Found {len(changes)} commits since {previous_version}")
     else:
