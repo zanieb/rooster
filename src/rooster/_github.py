@@ -14,6 +14,7 @@ from rooster._cache import cached_graphql_client
 from rooster._git import git
 
 TOKEN_REGEX = re.compile(r"Token:\s(.*)")
+NUMBER_REGEX = re.compile(r"\(\#([0-9]+)\)")
 
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)
@@ -162,6 +163,7 @@ def get_pull_requests_for_commits(
                         history(after: $after) {
                             nodes {
                                 oid
+                                message
                                 associatedPullRequests(first: 1) {
                                     edges {
                                         node {
@@ -224,9 +226,11 @@ def get_pull_requests_for_commits(
 
                 associated_pull_requests = commit["associatedPullRequests"]["edges"]
                 if not associated_pull_requests:
-                    # TODO: Commits without pull requests should probably be included in
-                    #       the changelog with a link to the commit and the commit
-                    #       message with an opt-in
+                    pull_request = find_pull_request_for_commit(
+                        commit, client, owner, repo_name
+                    )
+                    if pull_request:
+                        pull_requests.append(pull_request)
                     continue
 
                 for item in associated_pull_requests:
@@ -236,6 +240,17 @@ def get_pull_requests_for_commits(
                     labels = {
                         edge["node"]["name"] for edge in pull_request["labels"]["edges"]
                     }
+
+                    if "tracking" in labels:
+                        print(
+                            f"Found tracking label for pull request {pull_request['number']}, searching for associated pull request for {commit['oid']} by commit message"
+                        )
+                        pull_request = find_pull_request_for_commit(
+                            commit, client, owner, repo_name
+                        )
+                        if pull_request:
+                            pull_requests.append(pull_request)
+                        continue
 
                     pull_requests.append(
                         PullRequest(
@@ -253,6 +268,22 @@ def get_pull_requests_for_commits(
             page_start = page_info["endCursor"]
 
     return pull_requests
+
+
+def find_pull_request_for_commit(
+    commit: dict, client, owner, repo_name
+) -> PullRequest | None:
+    match = NUMBER_REGEX.search(commit["message"])
+    if not match:
+        # TODO: Commits without pull requests should probably be included in
+        #       the changelog with a link to the commit and the commit
+        #       message with an opt-in
+        print(f"No pull request number found in message for {commit['oid']}")
+        return None
+
+    # We may have a pull request number here
+    number = match.groups()[0]
+    return get_pull_request_by_number(client, owner, repo_name, number)
 
 
 def get_release(repo_org: str, repo_name: str, tag_name: str) -> Release | None:
@@ -299,3 +330,59 @@ def update_release_notes(
     )
     response.raise_for_status()
     return
+
+
+def get_pull_request_by_number(
+    client, owner: str, repo_name: str, number: str
+) -> PullRequest | None:
+    """
+    Retrieve pull request details by PR number.
+    Returns None if the PR doesn't exist.
+    """
+    query = textwrap.dedent(
+        """
+        query pullRequestByNumber($repo: String!, $owner: String!, $number: Int!) {
+            repository(name: $repo, owner: $owner) {
+                pullRequest(number: $number) {
+                    title
+                    number
+                    author {
+                        login
+                    }
+                    labels(first: 10) {
+                        edges {
+                            node {
+                                name
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+    )
+
+    response = _graphql(
+        client,
+        query,
+        variables={
+            "owner": owner,
+            "repo": repo_name,
+            "number": int(number),
+        },
+    )
+
+    pull_request = response["data"]["repository"]["pullRequest"]
+    if not pull_request:
+        return None
+
+    labels = {edge["node"]["name"] for edge in pull_request["labels"]["edges"]}
+
+    return PullRequest(
+        title=pull_request["title"],
+        number=int(number),
+        labels=frozenset(labels),
+        author=pull_request["author"]["login"],
+        repo_name=repo_name,
+        repo_owner=owner,
+    )
