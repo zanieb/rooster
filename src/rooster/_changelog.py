@@ -195,7 +195,7 @@ class VersionSection(Section):
         Extract entry sections from the version section.
         """
         # Sections are expected to be nested a single level deeper
-        return EntrySection.from_elements(
+        return ChangesSection.from_elements(
             self.document, self.children, level=self.element.level + 1
         )
 
@@ -219,6 +219,11 @@ class VersionSection(Section):
         # Initialize the sections dictionary to match the changelog sections config for
         # ordering
         sections = {section: [] for section in config.changelog_sections.values()}
+        authors = {
+            pull_request.author
+            for pull_request in pull_requests
+            if pull_request.author not in config.changelog_ignore_authors
+        }
 
         # De-duplicate pull requests and sort into sections
         for pull_request in set(pull_requests):
@@ -255,14 +260,21 @@ class VersionSection(Section):
 
             pull_requests = sorted(pull_requests, key=lambda pr: pr.title)
 
-            entry_section = EntrySection.from_pull_requests(
+            changes_section = ChangesSection.from_pull_requests(
                 document=document,
                 config=config,
                 section=section,
                 pull_requests=pull_requests,
             )
-            children.append(entry_section.element)
-            children.extend(entry_section.children)
+            children.append(changes_section.element)
+            children.extend(changes_section.children)
+
+        if config.changelog_contributors and authors:
+            section = ContributorsSection.from_authors(
+                document=document, authors=authors
+            )
+            children.append(section.element)
+            children.extend(section.children)
 
         heading_element = new_heading(str(version), level=level)
 
@@ -283,7 +295,7 @@ class VersionSection(Section):
 
 
 @dataclass
-class EntrySection(Section):
+class ListSection(Section):
     document: Document
     element: marko.block.Heading
     title: str
@@ -305,6 +317,9 @@ class EntrySection(Section):
 
         return entries
 
+
+@dataclass
+class ChangesSection(ListSection):
     @classmethod
     def from_pull_requests(
         cls,
@@ -334,28 +349,40 @@ class EntrySection(Section):
 
 
 @dataclass
+class ContributorsSection(ListSection):
+    @classmethod
+    def from_authors(
+        cls,
+        document: Document,
+        authors: Iterable[PullRequest],
+        level: int = 3,
+    ) -> Self:
+        heading = new_heading("Contributors", level)
+
+        lines = []
+        for author in authors:
+            line = f"- [@{author}](https://github.com/{author})"
+            lines.append(line)
+
+        return cls(
+            document=document,
+            element=heading,
+            title="Contributors",
+            children=(
+                [marko.block.BlankLine]
+                + marko.parse("\n".join(lines)).children
+                + [marko.block.BlankLine]
+            ),
+        )
+
+
+@dataclass
 class Entry:
     document: Document
     element: marko.block.ListItem
 
     def content(self) -> str:
         return self.document.renderer().render_children(self.element)
-
-
-def generate_contributors(
-    pull_requests: list[PullRequest], config: Config, level: int = 2
-) -> str:
-    contributors = ""
-    authors = {
-        pull_request.author
-        for pull_request in pull_requests
-        if pull_request.author not in config.changelog_ignore_authors
-    }
-    if authors:
-        contributors += "#" * level + " Contributors\n"
-        for author in sorted(authors):
-            contributors += f"- [@{author}](https://github.com/{author})\n"
-    return contributors
 
 
 def ensure_spacing(changelog: str) -> str:
