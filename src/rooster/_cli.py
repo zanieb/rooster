@@ -9,7 +9,17 @@ from rooster._changelog import (
     generate_contributors,
 )
 from rooster._config import Config
-from rooster._git import GitLookupError, get_commits_between, get_remote_url
+from rooster._git import (
+    GitLookupError,
+    get_commit_for_version,
+    get_commits_between_commits,
+    get_commits_between_versions,
+    get_latest_commit,
+    get_remote_url,
+    get_submodule_commit,
+    get_submodule_commits_between_commits,
+    repo_from_path,
+)
 from rooster._github import get_pull_requests_for_commits, parse_remote_url
 from rooster._pyproject import PyProjectError, update_pyproject_version
 from rooster._versions import (
@@ -28,6 +38,7 @@ app = typer.Typer()
 @app.command()
 def release(
     repo: Path = typer.Argument(default=Path(".")),
+    submodule: Path = None,
     bump: BumpType = None,
     update_pyproject: bool = True,
     update_version_files: bool = True,
@@ -47,19 +58,30 @@ def release(
 
     If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
+    base_path = repo
     config = Config.from_directory(repo)
 
     # Get the last release version
+    repo = repo_from_path(repo)
     versions = versions_from_git_tags(config, repo)
     last_version = get_latest_version(versions)
+    last_version_commit = get_commit_for_version(config, repo, last_version)
+    latest_commit = get_latest_commit(repo)
     if last_version:
-        typer.echo(f"Found last version tag {last_version}.")
+        typer.echo(
+            f"Found last version tag {last_version} at {str(last_version_commit.id)[:8]}."
+        )
     else:
         typer.echo("It looks like there are no version tags for this project.")
 
     # Get the commits since the last release
     try:
-        changes = list(get_commits_between(config, repo, last_version))
+        typer.echo(
+            f"Collecting commits between {str(last_version_commit.id)[:8]} ({last_version}) and {str(latest_commit.id)[:8]} (HEAD)..."
+        )
+        changes = list(
+            get_commits_between_commits(repo, last_version_commit, latest_commit)
+        )
     except GitLookupError as exc:
         typer.echo(f"Failed to find commits: {exc}")
         raise typer.Exit(1)
@@ -72,6 +94,39 @@ def release(
     # Collect pull requests corresponding to each commit
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
+
+    if submodule:
+        first_submodule_commit = get_submodule_commit(
+            repo, last_version_commit, submodule
+        )
+        second_submodule_commit = get_submodule_commit(repo, latest_commit, submodule)
+        typer.echo(
+            f"Collecting commits for {submodule} between {str(first_submodule_commit.id)[:8]} and {str(second_submodule_commit.id)[:8]}..."
+        )
+        try:
+            submodule_changes = list(
+                get_commits_between_commits(
+                    repo_from_path(submodule),
+                    first_submodule_commit,
+                    second_submodule_commit,
+                )
+            )
+        except GitLookupError as exc:
+            typer.echo(f"Failed to find commits: {exc}")
+            raise typer.Exit(1)
+        since = (
+            f"since last release in {submodule}" if last_version else f"in {submodule}"
+        )
+        typer.echo(f"Found {len(changes)} commits {since}.")
+
+        # Determine the GitHub repository to read
+        owner, repo_name = parse_remote_url(get_remote_url(repo_from_path(submodule)))
+
+        # Collect pull requests corresponding to each commit
+        typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
+        pull_requests += get_pull_requests_for_commits(
+            owner, repo_name, submodule_changes
+        )
 
     # Collect the unique set of labels changed
     labels = set()
@@ -109,7 +164,9 @@ def release(
 
     # Generate a changelog entry for the version
     changelog_file = (
-        Path(changelog_file) if changelog_file else repo.joinpath(config.changelog_file)
+        Path(changelog_file)
+        if changelog_file
+        else base_path.joinpath(config.changelog_file)
     )
     if not changelog_file.exists():
         changelog = Changelog.new()
@@ -132,7 +189,7 @@ def release(
 
     if update_pyproject:
         try:
-            update_pyproject_version(repo.joinpath("pyproject.toml"), new_version)
+            update_pyproject_version(base_path.joinpath("pyproject.toml"), new_version)
             typer.echo("Updated version in pyproject.toml")
         except PyProjectError as exc:
             typer.echo(f"Failed to update pyproject.toml: {exc}")
@@ -191,7 +248,9 @@ def changelog(
         typer.echo(f"Found previous version {previous_version}")
 
     try:
-        changes = list(get_commits_between(config, repo, previous_version, version))
+        changes = list(
+            get_commits_between_versions(config, repo, previous_version, version)
+        )
     except GitLookupError as exc:
         typer.echo(f"Failed to find commits: {exc}")
         raise typer.Exit(1)
@@ -284,7 +343,7 @@ def contributors(
         echo(f"Found previous version {previous_version}")
 
     try:
-        changes = list(get_commits_between(config, repo, previous_version))
+        changes = list(get_commits_between_versions(config, repo, previous_version))
     except GitLookupError as exc:
         typer.echo(f"Failed to find commits: {exc}")
         raise typer.Exit(1)
@@ -360,7 +419,9 @@ def backfill(
             if version < start_version:
                 continue
 
-        changes = list(get_commits_between(config, repo, previous_version, version))
+        changes = list(
+            get_commits_between_versions(config, repo, previous_version, version)
+        )
         if previous_version:
             typer.echo(
                 f"Found {len(changes)} commits between {previous_version}...{version}"
