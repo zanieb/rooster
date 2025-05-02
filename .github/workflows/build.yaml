@@ -1,9 +1,5 @@
 name: Build
 
-env:
-  POETRY_VERSION: "1.6.1"
-  PYTHON_VERSION: "3.11"
-
 on:
   push:
     branches:
@@ -32,25 +28,19 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Set up Poetry
-        run: |
-          pip install poetry==${{ env.POETRY_VERSION }}
-
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+  
       - name: Publish to Test PyPI
         id: build
         env:
-          POETRY_PYPI_TOKEN_TEST_PYPI: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
         run: |
           version=$(./scripts/version dev)
           echo "version=$version" >> $GITHUB_OUTPUT
-          poetry version $version
-          poetry config repositories.test-pypi https://test.pypi.org/legacy/
-          poetry publish --build -r test-pypi
+          uv version $version
+          uv build
+          uv publish --publish-url https://test.pypi.org/legacy/
 
   test-install:
     # We test the install on a clean machine to avoid poetry behavior attempting to
@@ -61,16 +51,8 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Set up Poetry
-        run: |
-          pip install poetry==${{ env.POETRY_VERSION }}
-          poetry init --name 'test-project' --no-interaction
-          poetry source add test-pypi https://test.pypi.org/simple/ --priority=explicit
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
 
       - name: Wait for package to be available
         run: >
@@ -80,23 +62,22 @@ jobs:
           do sleep 10;
           done
           &&
-          sleep 60
-          # We sleep for an additional 60 seconds as it seems to take a bit longer for
+          sleep 120
+          # We sleep for an additional 120 seconds as it seems to take a bit longer for
           # the package to be consistently available
 
           # Note: The above will not sleep forever due to the job level timeout
 
       - name: Install release from Test PyPI
-        run: >
-          poetry add
-          --source test-pypi
-          rooster-blue==${{ needs.build-and-publish.outputs.build-version }}
+        run: |
+          uv venv
+          uv pip install --index-strategy unsafe-best-match --refresh-package rooster-blue --extra-index-url https://test.pypi.org/simple/ rooster-blue==${{ needs.build-and-publish.outputs.build-version }}
 
       - name: Check release version
         run: |
-          installed=$(poetry run python -c "import pkg_resources; print(pkg_resources.get_distribution('rooster-blue').version)")
+          installed=$(uv run python -c "import pkg_resources; print(pkg_resources.get_distribution('rooster-blue').version)")
           test $installed = ${{ needs.build-and-publish.outputs.build-version }}
 
       - name: Check CLI help
         run: |
-          poetry run -- rooster --help
+          uv run -- rooster --help
