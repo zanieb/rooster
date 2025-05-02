@@ -5,7 +5,6 @@ env:
   # https://github.com/pytest-dev/pytest/issues/7443
   # https://github.com/actions/runner/issues/241
   PY_COLORS: 1
-  POETRY_VERSION: "1.6.1"
 
 on:
   pull_request:
@@ -45,19 +44,9 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Set up Poetry
-        run: |
-          pip install poetry==${{ env.POETRY_VERSION }}
-
-      - name: Install packages
-        run: |
-          poetry install
-
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
+  
       - name: Run tests
         run: |
-          poetry run -- pytest tests
+          uv run --python ${{ matrix.python-version }} -- pytest tests

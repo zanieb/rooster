@@ -1,9 +1,5 @@
 name: Release
 
-env:
-  POETRY_VERSION: "1.6.1"
-  PYTHON_VERSION: "3.11"
-
 on:
   push:
     tags:
@@ -26,42 +22,15 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
-      - name: Set up Python ${{ env.PYTHON_VERSION }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: "${{ env.PYTHON_VERSION }}"
-
-      - name: Set up Poetry
-        run: |
-          pip install poetry==${{ env.POETRY_VERSION }}
+      - name: Install the latest version of uv
+        uses: astral-sh/setup-uv@v6
 
       # Note: If build and publish steps are ever separated, the version must
       #       be set before building
       - name: Publish package
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_API_TOKEN }}
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          poetry version "${GITHUB_REF#refs/*/}"
-          poetry publish --build
-
-      # TODO: This does not work yet because the release tag ends up being newer than the current version
-      # - name: Update changelog
-      #   run: |
-      #     poetry install
-
-      #     TAG_NAME="${GITHUB_REF#refs/*/}"
-      #     git config user.name "$GITHUB_ACTOR"
-      #     git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-      #     git fetch origin main
-
-      #     poetry run -- rooster release --no-update-pyproject
-      #     git checkout -b "release/changelog-$TAG_NAME"
-      #     git commit -am "Update changelog for $TAG_NAME"
-      #     git push --set-upstream origin HEAD
-
-      #     gh pr create \
-      #       --fill \
-      #       --body "See: https://github.com/zanieb/rooster/releases/tag/$TAG_NAME"
-
-      #   env:
-      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          uv version "${GITHUB_REF#refs/*/}"
+          uv build
+          uv publish
