@@ -41,7 +41,6 @@ rooster = "rooster:app"
 dev = [
     "mypy>=0.971",
     "ruff>=0.0.287",
-    "syrupy>=4.5.0",
     "pytest>=7.4.2",
     "inline-snapshot>=0.23.0",
 ]
