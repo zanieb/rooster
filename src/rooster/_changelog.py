@@ -152,12 +152,9 @@ class Changelog(Document):
                     # Replace the existing version
                     if title == section.version:
                         remove = [i]
-
-        print(remove)
         if remove:
             # As we remove each item, the index of the next item to remove will change
             for i, to_remove in enumerate(sorted(remove)):
-                print(elements[to_remove - i])
                 elements.pop(to_remove - i)
             i = remove[0]
         else:
