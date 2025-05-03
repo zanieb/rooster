@@ -123,7 +123,7 @@ class Changelog(Document):
 
     def get_version_section(self, version: Version) -> VersionSection | None:
         for section in self.versions():
-            if section.version == version:
+            if section.version == str(version):
                 return section
         return None
 
@@ -132,29 +132,23 @@ class Changelog(Document):
         elements = cast(list, self.document.children)
         remove = None
         i = 0
+
+        # Scan for an existing version
         for i, element in enumerate(tuple(elements)):
             if isinstance(element, marko.block.Heading):
                 if element.level == level:
-                    try:
-                        version = Version(renderer.render(element.children[0]))
-                    except Exception:
-                        # We encountered an invalid version, stop here
-                        break
+                    title = renderer.render(element.children[0])
 
                     # We got to the next heading
                     if remove:
                         remove.append(i)
                         break
 
-                    # Assumes descending versions
-                    if version < section.version:
-                        break
-
                     # Replace the existing version
-                    if version == section.version:
+                    if title == section.version:
                         remove = [i, i + 1]
 
-            # Remove all of the elements
+            # Remove all of the elements after removal is started
             if remove:
                 remove.append(i)
 
@@ -163,6 +157,33 @@ class Changelog(Document):
             for i, to_remove in enumerate(sorted(remove)):
                 elements.pop(to_remove - i)
             i = remove[0]
+        else:
+            # Scan for an insertion position
+            try:
+                compare_version = Version(section.version)
+            except Exception:
+                # We cannot compare in this case
+                compare_version = None
+
+            for i, element in enumerate(tuple(elements)):
+                if not isinstance(element, marko.block.Heading):
+                    continue
+                if element.level != level:
+                    continue
+
+                # If we can't compare versions, just stop at the top
+                if not compare_version:
+                    break
+
+                try:
+                    version = Version(renderer.render(element.children[0]))
+                except Exception:
+                    # We encountered an invalid version, stop here
+                    break
+
+                # Otherwise, stop at the first smaller version
+                if version < compare_version:
+                    break
 
         elements.insert(i, section.element)
         elements.insert(i + 1, marko.block.BlankLine)
@@ -190,14 +211,14 @@ class VersionSection(Section):
     document: Document
     element: marko.block.Heading
     title: str
-    version: Version
+    version: str
     children: list[marko.parser.element.Element] = field(default_factory=list)
 
     @classmethod
     def new(
         cls, document: Document, element: marko.block.BlockElement, title: str
     ) -> Self:
-        return cls(document, element, title, version=Version(title))
+        return cls(document, element, title, version=title)
 
     def sections(self):
         """
@@ -287,7 +308,7 @@ class VersionSection(Section):
             document=document,
             element=heading_element,
             title=str(version),
-            version=version,
+            version=str(version),
             children=children,
         )
 
