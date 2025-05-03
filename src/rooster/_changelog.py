@@ -150,9 +150,14 @@ class Changelog(Document):
                     if version == section.version:
                         remove = [i, i + 1]
 
+            # Remove all of the elements
+            if remove:
+                remove.append(i)
+
         if remove:
-            for _ in range(remove[0], remove[1]):
-                elements.pop(remove[0])
+            # As we remove each item, the index of the next item to remove will change
+            for i, to_remove in enumerate(sorted(remove)):
+                elements.pop(to_remove - i)
             i = remove[0]
 
         elements.insert(i, section.element)
@@ -241,22 +246,18 @@ class VersionSection(Section):
                         sections[section].append(pull_request)
                         break
                 else:
-                    sections[
-                        config.changelog_sections.get("__unknown__", "Other changes")
-                    ].append(pull_request)
+                    if not only_sections:
+                        sections[
+                            config.changelog_sections.get(
+                                "__unknown__", "Other changes"
+                            )
+                        ].append(pull_request)
 
         children = []
         for section, pull_requests in sections.items():
             # Omit empty sections
             if not pull_requests:
                 continue
-
-            if only_sections:
-                if section not in only_sections:
-                    continue
-            if without_sections:
-                if section in without_sections:
-                    continue
 
             pull_requests = sorted(pull_requests, key=lambda pr: pr.title)
 

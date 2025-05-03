@@ -10,7 +10,7 @@ import pytest
 
 
 @pytest.fixture
-def git_directory(tmp_path: Path) -> Path:
+def git_directory(tmp_path: Path) -> Generator[Path, None, None]:
     """
     An empty git project in a temporary directory.
 
@@ -46,7 +46,7 @@ def empty_commit(directory: Path, message: str) -> None:
 
 
 @pytest.fixture
-def mock_pyproject(git_directory: Path) -> Path:
+def mock_pyproject(git_directory: Path) -> Generator[Path, None, None]:
     """
     Creates a mock pyproject.toml file.
     """
@@ -62,7 +62,9 @@ def mock_pyproject(git_directory: Path) -> Path:
 
 
 @pytest.fixture
-def mock_project(git_directory: Path, mock_pyproject: Path) -> Path:
+def mock_project(
+    git_directory: Path, mock_pyproject: Path
+) -> Generator[Path, None, None]:
     """
     A basic mock project.
     """
