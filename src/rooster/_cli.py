@@ -27,7 +27,7 @@ from rooster._versions import (
     versions_from_git_tags,
 )
 
-app = typer.Typer()
+app = typer.Typer(pretty_exceptions_enable=False)
 
 
 @app.command()
