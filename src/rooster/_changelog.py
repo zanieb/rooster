@@ -135,7 +135,11 @@ class Changelog(Document):
         for i, element in enumerate(tuple(elements)):
             if isinstance(element, marko.block.Heading):
                 if element.level == level:
-                    version = Version(renderer.render(element.children[0]))
+                    try:
+                        version = Version(renderer.render(element.children[0]))
+                    except Exception:
+                        # We encountered an invalid version, stop here
+                        break
 
                     # We got to the next heading
                     if remove:
