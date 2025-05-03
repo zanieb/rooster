@@ -3,7 +3,6 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
-import sys
 from typing import Iterable, Self, cast
 
 import marko
