@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
+import sys
 from typing import Iterable, Self, cast
 
 import marko
@@ -135,26 +136,29 @@ class Changelog(Document):
 
         # Scan for an existing version
         for i, element in enumerate(tuple(elements)):
+            # Append items to remove...
+            if remove:
+                remove.append(i)
+
             if isinstance(element, marko.block.Heading):
                 if element.level == level:
                     title = renderer.render(element.children[0])
 
-                    # We got to the next heading
+                    # We got to the next version heading
                     if remove:
-                        remove.append(i)
+                        # Don't remove the next version
+                        remove.pop()
                         break
 
                     # Replace the existing version
                     if title == section.version:
-                        remove = [i, i + 1]
+                        remove = [i]
 
-            # Remove all of the elements after removal is started
-            if remove:
-                remove.append(i)
-
+        print(remove)
         if remove:
             # As we remove each item, the index of the next item to remove will change
             for i, to_remove in enumerate(sorted(remove)):
+                print(elements[to_remove - i])
                 elements.pop(to_remove - i)
             i = remove[0]
         else:

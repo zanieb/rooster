@@ -65,6 +65,8 @@ def test_update_changelog(tmp_path):
         ],
     )
     assert changelog.read_text() == snapshot("""\
+# Changelog
+
 ## 0.1.0
 
 ### Other changes
@@ -102,11 +104,142 @@ def test_update_changelog(tmp_path):
         ],
     )
     assert changelog.read_text() == snapshot("""\
+# Changelog
+
 ## 0.2.0
 
 ### Other changes
 
 - Another test ([#4](https://github.com/owner/repo/pull/4))
+- Test ([#3](https://github.com/owner/repo/pull/3))
+
+### Contributors
+
+- [@author](https://github.com/author)
+
+## 0.1.0
+
+### Other changes
+
+- Another test ([#2](https://github.com/owner/repo/pull/2))
+- Test ([#1](https://github.com/owner/repo/pull/1))
+
+### Contributors
+
+- [@author](https://github.com/author)
+""")
+
+    update_changelog(
+        changelog,
+        Version("0.3.0"),
+        config=Config(),
+        pull_requests=[
+            PullRequest(
+                title="Test",
+                number=6,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+            ),
+            PullRequest(
+                title="Another test",
+                number=7,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+            ),
+        ],
+    )
+    assert changelog.read_text() == snapshot("""\
+# Changelog
+
+## 0.3.0
+
+### Other changes
+
+- Another test ([#7](https://github.com/owner/repo/pull/7))
+- Test ([#6](https://github.com/owner/repo/pull/6))
+
+### Contributors
+
+- [@author](https://github.com/author)
+
+## 0.2.0
+
+### Other changes
+
+- Another test ([#4](https://github.com/owner/repo/pull/4))
+- Test ([#3](https://github.com/owner/repo/pull/3))
+
+### Contributors
+
+- [@author](https://github.com/author)
+
+## 0.1.0
+
+### Other changes
+
+- Another test ([#2](https://github.com/owner/repo/pull/2))
+- Test ([#1](https://github.com/owner/repo/pull/1))
+
+### Contributors
+
+- [@author](https://github.com/author)
+""")
+
+    update_changelog(
+        changelog,
+        Version("0.2.0"),
+        config=Config(),
+        pull_requests=[
+            PullRequest(
+                title="Test",
+                number=3,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+            ),
+            PullRequest(
+                title="Another test",
+                number=4,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+            ),
+            PullRequest(
+                title="Another test",
+                number=5,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+            ),
+        ],
+    )
+    assert changelog.read_text() == snapshot("""\
+# Changelog
+
+## 0.3.0
+
+### Other changes
+
+- Another test ([#7](https://github.com/owner/repo/pull/7))
+- Test ([#6](https://github.com/owner/repo/pull/6))
+
+### Contributors
+
+- [@author](https://github.com/author)
+
+## 0.2.0
+
+### Other changes
+
+- Another test ([#4](https://github.com/owner/repo/pull/4))
+- Another test ([#5](https://github.com/owner/repo/pull/5))
 - Test ([#3](https://github.com/owner/repo/pull/3))
 
 ### Contributors
@@ -183,6 +316,8 @@ def test_update_changelog_sections(tmp_path):
         ],
     )
     assert changelog.read_text() == snapshot("""\
+# Changelog
+
 ## 0.1.0
 
 ### A
