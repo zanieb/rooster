@@ -62,11 +62,11 @@ def release(
     last_version_commit = get_commit_for_version(config, repo, last_version)
     latest_commit = get_latest_commit(repo)
     if last_version:
-        typer.echo(
-            f"Found last version tag {last_version} at {str(last_version_commit.id)[:8]}."
-        )
+        typer.echo(f"Found last version tag {last_version}")
     else:
-        typer.echo("It looks like there are no version tags for this project.")
+        typer.echo(
+            "It looks like there are no version tags for this project, starting with the first commit."
+        )
 
     # Get the commits since the last release
     try:
@@ -176,7 +176,7 @@ def release(
     )
     update_changelog(
         changelog_file,
-        new_version=new_version,
+        version=new_version,
         config=config,
         pull_requests=pull_requests,
         only_sections=only_sections,
