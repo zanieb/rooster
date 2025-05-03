@@ -3,6 +3,7 @@ from __future__ import annotations
 import abc
 from dataclasses import dataclass, field
 from pathlib import Path
+import sys
 from typing import Iterable, Self, cast
 
 import marko
@@ -123,7 +124,7 @@ class Changelog(Document):
 
     def get_version_section(self, version: Version) -> VersionSection | None:
         for section in self.versions():
-            if section.version == version:
+            if section.version == str(version):
                 return section
         return None
 
@@ -132,28 +133,61 @@ class Changelog(Document):
         elements = cast(list, self.document.children)
         remove = None
         i = 0
+
+        # Scan for an existing version
         for i, element in enumerate(tuple(elements)):
+            # Append items to remove...
+            if remove:
+                remove.append(i)
+
             if isinstance(element, marko.block.Heading):
                 if element.level == level:
-                    version = Version(renderer.render(element.children[0]))
+                    title = renderer.render(element.children[0])
 
-                    # We got to the next heading
+                    # We got to the next version heading
                     if remove:
-                        remove.append(i)
-                        break
-
-                    # Assumes descending versions
-                    if version < section.version:
+                        # Don't remove the next version
+                        remove.pop()
                         break
 
                     # Replace the existing version
-                    if version == section.version:
-                        remove = [i, i + 1]
+                    if title == section.version:
+                        remove = [i]
 
+        print(remove)
         if remove:
-            for _ in range(remove[0], remove[1]):
-                elements.pop(remove[0])
+            # As we remove each item, the index of the next item to remove will change
+            for i, to_remove in enumerate(sorted(remove)):
+                print(elements[to_remove - i])
+                elements.pop(to_remove - i)
             i = remove[0]
+        else:
+            # Scan for an insertion position
+            try:
+                compare_version = Version(section.version)
+            except Exception:
+                # We cannot compare in this case
+                compare_version = None
+
+            for i, element in enumerate(tuple(elements)):
+                if not isinstance(element, marko.block.Heading):
+                    continue
+                if element.level != level:
+                    continue
+
+                # If we can't compare versions, just stop at the top
+                if not compare_version:
+                    break
+
+                try:
+                    version = Version(renderer.render(element.children[0]))
+                except Exception:
+                    # We encountered an invalid version, stop here
+                    break
+
+                # Otherwise, stop at the first smaller version
+                if version < compare_version:
+                    break
 
         elements.insert(i, section.element)
         elements.insert(i + 1, marko.block.BlankLine)
@@ -181,14 +215,14 @@ class VersionSection(Section):
     document: Document
     element: marko.block.Heading
     title: str
-    version: Version
+    version: str
     children: list[marko.parser.element.Element] = field(default_factory=list)
 
     @classmethod
     def new(
         cls, document: Document, element: marko.block.BlockElement, title: str
     ) -> Self:
-        return cls(document, element, title, version=Version(title))
+        return cls(document, element, title, version=title)
 
     def sections(self):
         """
@@ -241,22 +275,18 @@ class VersionSection(Section):
                         sections[section].append(pull_request)
                         break
                 else:
-                    sections[
-                        config.changelog_sections.get("__unknown__", "Other changes")
-                    ].append(pull_request)
+                    if not only_sections:
+                        sections[
+                            config.changelog_sections.get(
+                                "__unknown__", "Other changes"
+                            )
+                        ].append(pull_request)
 
         children = []
         for section, pull_requests in sections.items():
             # Omit empty sections
             if not pull_requests:
                 continue
-
-            if only_sections:
-                if section not in only_sections:
-                    continue
-            if without_sections:
-                if section in without_sections:
-                    continue
 
             pull_requests = sorted(pull_requests, key=lambda pr: pr.title)
 
@@ -282,7 +312,7 @@ class VersionSection(Section):
             document=document,
             element=heading_element,
             title=str(version),
-            version=version,
+            version=str(version),
             children=children,
         )
 

@@ -16,7 +16,7 @@ from rooster._git import (
     get_submodule_commit,
     repo_from_path,
 )
-from rooster._github import get_pull_requests_for_commits, parse_remote_url
+from rooster._github import PullRequest, get_pull_requests_for_commits, parse_remote_url
 from rooster._pyproject import PyProjectError, update_pyproject_version
 from rooster._versions import (
     BumpType,
@@ -27,7 +27,7 @@ from rooster._versions import (
     versions_from_git_tags,
 )
 
-app = typer.Typer()
+app = typer.Typer(pretty_exceptions_enable=False)
 
 
 @app.command()
@@ -62,11 +62,11 @@ def release(
     last_version_commit = get_commit_for_version(config, repo, last_version)
     latest_commit = get_latest_commit(repo)
     if last_version:
-        typer.echo(
-            f"Found last version tag {last_version} at {str(last_version_commit.id)[:8]}."
-        )
+        typer.echo(f"Found last version tag {last_version}")
     else:
-        typer.echo("It looks like there are no version tags for this project.")
+        typer.echo(
+            "It looks like there are no version tags for this project, starting with the first commit."
+        )
 
     # Get the commits since the last release
     try:
@@ -83,38 +83,50 @@ def release(
     typer.echo(f"Found {len(changes)} commits {since}.")
 
     # Determine the GitHub repository to read
-    owner, repo_name = parse_remote_url(get_remote_url(repo))
+    remote = get_remote_url(repo)
+    if remote is None:
+        typer.echo("Failed to determine remote for repository.")
+        raise typer.Exit(1)
+    owner, repo_name = parse_remote_url(remote)
 
     # Collect pull requests corresponding to each commit
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
     if submodule:
-        first_submodule_commit = get_submodule_commit(
+        submodule = repo_from_path(submodule)
+        submodule_path = Path(submodule.workdir).relative_to(repo.workdir)
+        last_submodule_commit = get_submodule_commit(
             repo, last_version_commit, submodule
         )
-        second_submodule_commit = get_submodule_commit(repo, latest_commit, submodule)
+        latest_submodule_commit = get_latest_commit(submodule)
         typer.echo(
-            f"Collecting commits for {submodule} between {str(first_submodule_commit.id)[:8]} and {str(second_submodule_commit.id)[:8]}..."
+            f"Collecting commits for submodule `{submodule_path}` between {str(last_submodule_commit.id)[:8]} and {str(latest_submodule_commit.id)[:8]}..."
         )
         try:
             submodule_changes = list(
                 get_commits_between_commits(
-                    repo_from_path(submodule),
-                    first_submodule_commit,
-                    second_submodule_commit,
+                    submodule,
+                    last_submodule_commit,
+                    latest_submodule_commit,
                 )
             )
         except GitLookupError as exc:
             typer.echo(f"Failed to find commits: {exc}")
             raise typer.Exit(1)
         since = (
-            f"since last release in {submodule}" if last_version else f"in {submodule}"
+            f"since last release for submodule `{submodule_path}`"
+            if last_version
+            else f"for submodule `{submodule_path}`"
         )
         typer.echo(f"Found {len(changes)} commits {since}.")
 
         # Determine the GitHub repository to read
-        owner, repo_name = parse_remote_url(get_remote_url(repo_from_path(submodule)))
+        remote = get_remote_url(submodule)
+        if remote is None:
+            typer.echo("Failed to determine remote for submodule.")
+            raise typer.Exit(1)
+        owner, repo_name = parse_remote_url(remote)
 
         # Collect pull requests corresponding to each commit
         typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
@@ -162,23 +174,14 @@ def release(
         if changelog_file
         else directory.joinpath(config.changelog_file)
     )
-    if not changelog_file.exists():
-        changelog = Changelog.new()
-        typer.echo("Creating new changelog file")
-    else:
-        # Load the existing changelog
-        changelog = Changelog.from_file(changelog_file)
-
-    section = VersionSection.from_pull_requests(
-        document=changelog,
-        config=config,
+    update_changelog(
+        changelog_file,
         version=new_version,
+        config=config,
         pull_requests=pull_requests,
         only_sections=only_sections,
         without_sections=without_sections,
     )
-    changelog.insert_version_section(section)
-    changelog_file.write_text(changelog.to_markdown())
     typer.echo("Updated changelog")
 
     if update_pyproject:
@@ -199,3 +202,36 @@ def release(
 # of a child.
 @app.command(hidden=True)
 def noop(): ...
+
+
+def update_changelog(
+    changelog_file: Path,
+    version: Version,
+    config: Config,
+    pull_requests: list[PullRequest],
+    only_sections: set[str] = set(),
+    without_sections: set[str] = set(),
+):
+    if not changelog_file.exists():
+        changelog = Changelog.new()
+        typer.echo("Creating new changelog file")
+    else:
+        # Load the existing changelog
+        changelog = Changelog.from_file(changelog_file)
+
+    section = VersionSection.from_pull_requests(
+        document=changelog,
+        config=config,
+        version=version,
+        pull_requests=pull_requests,
+        only_sections=only_sections,
+        without_sections=without_sections,
+    )
+
+    # TODO(zanieb): Implement smart merging here
+    existing = changelog.get_version_section(version)
+    if existing:
+        typer.echo(f"Version {version} already exists in changelog, updating...")
+
+    changelog.insert_version_section(section)
+    changelog_file.write_text(changelog.to_markdown())
