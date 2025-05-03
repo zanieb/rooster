@@ -6,6 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+import pygit2 as git
 import tomllib
 from packaging.version import InvalidVersion, Version
 
@@ -19,7 +20,9 @@ class BumpType(Enum):
     patch = "patch"
 
 
-def versions_from_git_tags(config: Config, repo: Path) -> list[Version]:
+def versions_from_git_tags(
+    config: Config, repo: git.repository.Repository
+) -> list[Version]:
     """
     Get versions of the project from git tags.
     """
