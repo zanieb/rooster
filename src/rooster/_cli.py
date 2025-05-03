@@ -87,7 +87,7 @@ def release(
     if remote is None:
         typer.echo("Failed to determine remote for repository.")
         raise typer.Exit(1)
-    owner, repo_name = parse_remote_url()
+    owner, repo_name = parse_remote_url(remote)
 
     # Collect pull requests corresponding to each commit
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
@@ -122,7 +122,11 @@ def release(
         typer.echo(f"Found {len(changes)} commits {since}.")
 
         # Determine the GitHub repository to read
-        owner, repo_name = parse_remote_url(get_remote_url(submodule))
+        remote = get_remote_url(submodule)
+        if remote is None:
+            typer.echo("Failed to determine remote for submodule.")
+            raise typer.Exit(1)
+        owner, repo_name = parse_remote_url(remote)
 
         # Collect pull requests corresponding to each commit
         typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
