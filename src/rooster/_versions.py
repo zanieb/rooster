@@ -10,15 +10,10 @@ import pygit2 as git
 import tomllib
 from packaging.version import InvalidVersion, Version
 
-from rooster._config import Config
+from rooster._config import BumpType, Config, VersionFile
 from rooster._git import get_tags
-from rooster._pyproject import update_pyproject_version
 
-
-class BumpType(Enum):
-    major = "major"
-    minor = "minor"
-    patch = "patch"
+CARGO_PRE_MAP = {"a": "alpha", "b": "beta", "rc": "rc"}
 
 
 def versions_from_git_tags(
@@ -77,6 +72,7 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
     """
     # Pull the release section from the version and increment the appropriate number
     release = list(version.release)
+    pre = None
 
     match bump_type:
         case BumpType.patch:
@@ -89,6 +85,11 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
             # Reset minor and patch versions
             release[1] = 0
             release[2] = 0
+        case BumpType.pre:
+            if not version.is_prerelease:
+                pre = "a1"
+            else:
+                pre = f"{version.pre[0]}{version.pre[1] + 1}"
         case _:
             raise ValueError(f"Invalid bump type: {bump_type}")
 
@@ -100,44 +101,69 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
     # Update release segment
     parts.append(".".join(str(x) for x in release))
 
-    # We do not include other sections like dev/local/post since we are publishing
-    # a new version. We could allow doing so in a separate function but then we
-    # would need to construct the object again.
+    if pre:
+        parts.append(pre)
+
     return Version("".join(parts))
 
 
-def update_file_version(
-    path: Path, old_version: Version | None, new_version: Version
+def to_cargo_version(version: Version) -> str:
+    """
+    Convert a version to a string suitable for Cargo.toml.
+    """
+    if not version.is_prerelease:
+        return f"{version.major}.{version.minor}.{version.micro}"
+    return f"{version.major}.{version.minor}.{version.micro}-{CARGO_PRE_MAP[version.pre[0]]}.{version.pre[1]}"
+
+
+def update_version_file(
+    version_file: Path | VersionFile, old_version: Version, new_version: Version
 ) -> None:
-    if path.name.lower() == "cargo.toml":
-        update_toml_version(path, "package.version", old_version, new_version)
-    elif path.name.lower() == "pyproject.toml":
-        update_pyproject_version(path, old_version, new_version)
+    if isinstance(version_file, Path):
+        path = version_file
+        format = None
+        field = None
+    else:
+        path = version_file.path
+        format = version_file.format
+        field = version_file.field
+
+    if format == "cargo" or path.name.lower() == "cargo.toml":
+        update_toml_version(
+            path,
+            field or "package.version",
+            to_cargo_version(old_version),
+            to_cargo_version(new_version),
+        )
+    elif format == "pyproject" or path.name.lower() == "pyproject.toml":
+        update_toml_version(
+            path, field or "project.version", str(old_version), str(new_version)
+        )
     elif path.suffix.lower() == ".md" or path.suffix.lower() == ".txt":
         if old_version is None:
             raise ValueError(
                 f"Cannot update version in file {path.name} without a previous version"
             )
-        update_text_version(path, old_version, new_version)
+        update_text_version(path, str(old_version), str(new_version))
     else:
         raise ValueError(
             f"Unsupported version update file {path.name}; expected 'Cargo.toml', 'pyproject.toml', '*.txt', or '*.md' file"
         )
 
 
-def update_text_version(path: Path, old_version: Version, new_version: Version) -> None:
+def update_text_version(path: Path, old_version: str, new_version: str) -> None:
     """
     Update the version in a basic text file.
     """
     contents = path.read_text()
-    path.write_text(contents.replace(str(old_version), str(new_version)))
+    path.write_text(contents.replace(old_version, new_version))
 
 
 def update_toml_version(
     path: Path,
     key: str,
-    old_version: Version | None,
-    new_version: Version,
+    old_version: str,
+    new_version: str,
 ) -> None:
     """
     Update the version in a toml file.
@@ -151,22 +177,23 @@ def update_toml_version(
     except KeyError:
         raise KeyError(f"{key} not found in {path}")
 
-    if old_version:
-        # Ensure the contents matches the expected old version
-        if Version(found_old_version) != old_version:
-            raise Version(
-                f"Mismatched version in {path}::{key}; expected {old_version} found {found_old_version}"
-            )
+    last_key = key.split(".")[-1]
+
+    # Ensure the contents matches the expected old version
+    if found_old_version != old_version:
+        raise ValueError(
+            f"Mismatched version in {path}::{key}; expected {old_version} found {found_old_version}"
+        )
 
     # Update with a string replacement to avoid reformatting the whole file
     contents = contents.replace(
-        f'version = "{old_version}"', f'version = "{new_version}"', 1
+        f'{last_key} = "{old_version}"', f'{last_key} = "{new_version}"', 1
     )
 
     # Confirm we updated the correct key
     new_parsed = tomllib.loads(contents)
     found_new_version = _get_nested_key(new_parsed, key)
-    if found_new_version != str(new_version):
+    if found_new_version != new_version:
         raise RuntimeError(
             f"Failed safety check when updating version at {path}::{key}; expected {new_version} found {found_new_version}"
         )
