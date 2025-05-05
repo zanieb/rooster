@@ -16,7 +16,11 @@ class PyProjectError(Exception):
     pass
 
 
-def update_pyproject_version(path: Path, version: Version) -> None:
+def update_pyproject_version(
+    path: Path,
+    old_version: Version | None,
+    version: Version,
+) -> None:
     """
     Update the version in a `pyproject.toml` file.
     """
@@ -30,8 +34,18 @@ def update_pyproject_version(path: Path, version: Version) -> None:
     if "version" not in parsed["project"]:
         raise PyProjectError("Missing `project.version` field.")
 
-    old_version = parsed["project"]["version"]
-    contents = contents.replace(f'version = "{old_version}"', f'version = "{version}"')
+    found_old_version = parsed["project"]["version"]
+
+    if old_version:
+        # Ensure the contents matches the expected old version
+        if Version(found_old_version) != old_version:
+            raise Version(
+                f"Mismatched version in {path}::project.version; expected {old_version} found {found_old_version}"
+            )
+
+    contents = contents.replace(
+        f'version = "{found_old_version}"', f'version = "{version}"'
+    )
     path.write_text(contents)
 
 
