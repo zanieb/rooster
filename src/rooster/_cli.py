@@ -144,6 +144,25 @@ def release(
             owner, repo_name, submodule_changes
         )
 
+    if not pull_requests:
+        typer.echo("No pull requests found, aborting!")
+        raise typer.Exit(1)
+
+    # Filter the pull requests to relevant labels
+    if config.required_labels:
+        prefilter_count = len(pull_requests)
+        pull_requests = [
+            pull_request
+            for pull_request in pull_requests
+            if pull_request.labels.intersection(config.required_labels)
+        ]
+        if not pull_requests:
+            typer.echo("No pull requests found with required labels, aborting!")
+            raise typer.Exit(1)
+        typer.echo(
+            f"Found {len(pull_requests)} pull requests with required labels (out of {prefilter_count})."
+        )
+
     # Collect the unique set of labels changed
     labels = set()
     for pull_request in pull_requests:

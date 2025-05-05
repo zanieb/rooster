@@ -16,6 +16,11 @@ class BumpType(StrEnum):
     pre = auto()
 
 
+def to_kebab(string: str) -> str:
+    """Convert a snake_case string to kebab-case."""
+    return string.replace("_", "-")
+
+
 class Config(pydantic.BaseModel):
     """
     Configuration options and defaults for Rooster.
@@ -24,6 +29,8 @@ class Config(pydantic.BaseModel):
     major_labels: frozenset[str] = frozenset(["breaking"])
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
+
+    required_labels: frozenset[str] = frozenset()
 
     changelog_file: str = "CHANGELOG.md"
     changelog_contributors: bool = True
@@ -40,7 +47,7 @@ class Config(pydantic.BaseModel):
     )
 
     # Paths to files to replace versions at
-    version_files: list[Path | VersionFile] = ["pyproject.toml"]
+    version_files: list[Path | VersionFile] = [Path("pyproject.toml")]
 
     # The default version bump to use
     default_bump_type: BumpType = BumpType.patch
@@ -75,6 +82,8 @@ class Config(pydantic.BaseModel):
         pyproject = tomllib.loads(path.read_text())
         section = pyproject.get("tool", {}).get("rooster", {})
         return cls(**section)
+
+    model_config = pydantic.ConfigDict(alias_generator=to_kebab, populate_by_name=True)
 
 
 class VersionFile(pydantic.BaseModel):

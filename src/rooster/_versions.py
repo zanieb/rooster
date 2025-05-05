@@ -2,7 +2,6 @@
 Utilities for working with version numbers.
 """
 
-from enum import Enum
 from pathlib import Path
 from typing import Any
 
