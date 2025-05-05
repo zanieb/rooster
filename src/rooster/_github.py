@@ -30,6 +30,9 @@ class PullRequest:
             f"https://github.com/{self.repo_owner}/{self.repo_name}/pull/{self.number}"
         )
 
+    def __lt__(self, other):
+        return self.number < other.number
+
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)
 class Release:
