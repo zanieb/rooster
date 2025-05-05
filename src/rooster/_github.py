@@ -206,9 +206,13 @@ def get_pull_requests_for_commits(
                 },
             )
 
-            response_commits = response["data"]["repository"]["commit"]["history"][
-                "nodes"
-            ]
+            response_commits = response["data"]["repository"]["commit"]
+            if not response_commits:
+                # If this is empty, we can't paginate
+                next_page = False
+                continue
+
+            response_commits = response_commits["history"]["nodes"]
             seen_commits += len(response_commits)
             for commit in response_commits:
                 if commit["oid"] not in expected_commits:
