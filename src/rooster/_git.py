@@ -43,6 +43,17 @@ def get_commit_for_version(
     return commit
 
 
+def get_initial_commit(repo: git.repository.Repository) -> git.Commit:
+    """
+    Get the initial commit of the repository.
+    """
+    # Walk the repository to find the initial commit
+    for commit in repo.walk(repo.head.target):
+        if commit.parents == []:
+            return commit
+    raise GitLookupError("Could not find initial commit")
+
+
 def get_submodule_commit(
     repo: git.repository.Repository,
     at_commit: git.Commit | None,
