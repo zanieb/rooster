@@ -256,7 +256,7 @@ class VersionSection(Section):
         }
 
         # De-duplicate pull requests and sort into sections
-        for pull_request in set(pull_requests):
+        for pull_request in sorted(set(pull_requests)):
             for label in pull_request.labels:
                 if label in config.changelog_ignore_labels:
                     break
