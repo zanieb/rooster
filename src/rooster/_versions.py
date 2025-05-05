@@ -110,22 +110,7 @@ def update_file_version(path: Path, old_version: Version, new_version: Version) 
     if path.name.lower() == "cargo.toml":
         update_toml_version(path, "package.version", old_version, new_version)
     elif path.name.lower() == "pyproject.toml":
-        # Try the standard format
-        try:
-            return update_pyproject_version(path, new_version)
-        except KeyError:
-            pass
-
-        # Then try the Poetry format
-        try:
-            return update_toml_version(
-                path, "tool.poetry.version", old_version, new_version
-            )
-        except KeyError:
-            raise ValueError(
-                f"Could not find `project.version` or `tool.poetry.version` at {path}."
-            )
-
+        update_pyproject_version(path, new_version)
     elif path.name.lower().endswith(".md") or path.name.lower().endswith(".txt"):
         update_text_version(path, old_version, new_version)
     else:
