@@ -31,7 +31,7 @@ class Config(pydantic.BaseModel):
     )
 
     # Paths to files to replace versions at
-    version_files: list[Path] = []
+    version_files: list[Path] = ["pyproject.toml"]
 
     # A prefix to identify tags as versions e.g. "v"
     version_tag_prefix: str = ""

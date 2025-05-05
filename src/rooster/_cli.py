@@ -18,7 +18,6 @@ from rooster._git import (
     repo_from_path,
 )
 from rooster._github import PullRequest, get_pull_requests_for_commits, parse_remote_url
-from rooster._pyproject import PyProjectError, update_pyproject_version
 from rooster._versions import (
     BumpType,
     Version,
@@ -37,7 +36,6 @@ def release(
     submodule: Path = None,
     bump: BumpType = None,
     version: str = None,
-    update_pyproject: bool = True,
     update_version_files: bool = True,
     changelog_file: str = None,
     only_sections: list[str] = typer.Option(
@@ -199,14 +197,6 @@ def release(
         without_sections=without_sections,
     )
     typer.echo("Updated changelog")
-
-    if update_pyproject:
-        try:
-            update_pyproject_version(directory.joinpath("pyproject.toml"), new_version)
-            typer.echo("Updated version in pyproject.toml")
-        except PyProjectError as exc:
-            typer.echo(f"Failed to update pyproject.toml: {exc}")
-            raise typer.Exit(1)
 
     if update_version_files:
         for path in config.version_files:

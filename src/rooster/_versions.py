@@ -106,12 +106,18 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
     return Version("".join(parts))
 
 
-def update_file_version(path: Path, old_version: Version, new_version: Version) -> None:
+def update_file_version(
+    path: Path, old_version: Version | None, new_version: Version
+) -> None:
     if path.name.lower() == "cargo.toml":
         update_toml_version(path, "package.version", old_version, new_version)
     elif path.name.lower() == "pyproject.toml":
-        update_pyproject_version(path, new_version)
-    elif path.name.lower().endswith(".md") or path.name.lower().endswith(".txt"):
+        update_pyproject_version(path, old_version, new_version)
+    elif path.suffix.lower() == ".md" or path.suffix.lower() == ".txt":
+        if old_version is None:
+            raise ValueError(
+                f"Cannot update version in file {path.name} without a previous version"
+            )
         update_text_version(path, old_version, new_version)
     else:
         raise ValueError(
@@ -128,7 +134,10 @@ def update_text_version(path: Path, old_version: Version, new_version: Version) 
 
 
 def update_toml_version(
-    path: Path, key: str, old_version: Version, new_version: Version
+    path: Path,
+    key: str,
+    old_version: Version | None,
+    new_version: Version,
 ) -> None:
     """
     Update the version in a toml file.
@@ -142,11 +151,12 @@ def update_toml_version(
     except KeyError:
         raise KeyError(f"{key} not found in {path}")
 
-    # Ensure the contents matches the expected old version
-    if Version(found_old_version) != old_version:
-        raise Version(
-            f"Mismatched version in {path}::{key}; expected {old_version} found {found_old_version}"
-        )
+    if old_version:
+        # Ensure the contents matches the expected old version
+        if Version(found_old_version) != old_version:
+            raise Version(
+                f"Mismatched version in {path}::{key}; expected {old_version} found {found_old_version}"
+            )
 
     # Update with a string replacement to avoid reformatting the whole file
     contents = contents.replace(
