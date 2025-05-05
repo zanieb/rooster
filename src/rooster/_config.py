@@ -1,10 +1,19 @@
 from __future__ import annotations
 
+from enum import StrEnum, auto
 from pathlib import Path
+from typing import Literal
 
 import pydantic
 import tomllib
 from typing_extensions import Self
+
+
+class BumpType(StrEnum):
+    major = auto()
+    minor = auto()
+    patch = auto()
+    pre = auto()
 
 
 class Config(pydantic.BaseModel):
@@ -31,7 +40,10 @@ class Config(pydantic.BaseModel):
     )
 
     # Paths to files to replace versions at
-    version_files: list[Path] = ["pyproject.toml"]
+    version_files: list[Path | VersionFile] = ["pyproject.toml"]
+
+    # The default version bump to use
+    default_bump_type: BumpType = BumpType.patch
 
     # A prefix to identify tags as versions e.g. "v"
     version_tag_prefix: str = ""
@@ -63,3 +75,12 @@ class Config(pydantic.BaseModel):
         pyproject = tomllib.loads(path.read_text())
         section = pyproject.get("tool", {}).get("rooster", {})
         return cls(**section)
+
+
+class VersionFile(pydantic.BaseModel):
+    path: Path
+    format: Literal["toml", "text", "cargo"] = "text"
+    field: str | None = None
+
+    def __str__(self):
+        return str(self.path)

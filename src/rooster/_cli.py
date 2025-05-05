@@ -23,7 +23,7 @@ from rooster._versions import (
     Version,
     bump_version,
     get_latest_version,
-    update_file_version,
+    update_version_file,
     versions_from_git_tags,
 )
 
@@ -157,7 +157,7 @@ def release(
         if bump:
             bump_type = bump
         else:
-            bump_type = BumpType.patch
+            bump_type = config.default_bump_type
             for label in config.major_labels:
                 if label in labels:
                     typer.echo(f"Detected major version change due label {label}")
@@ -199,9 +199,11 @@ def release(
     typer.echo("Updated changelog")
 
     if update_version_files:
-        for path in config.version_files:
-            update_file_version(path, last_version, new_version)
-            typer.echo(f"Updated version in {path}")
+        for version_file in config.version_files:
+            update_version_file(
+                version_file, last_version or Version("0.0.0"), new_version
+            )
+            typer.echo(f"Updated version in {version_file}")
 
 
 # When only one command exists, typer will treat it as the root command instead
