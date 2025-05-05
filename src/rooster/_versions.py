@@ -12,6 +12,7 @@ from packaging.version import InvalidVersion, Version
 
 from rooster._config import Config
 from rooster._git import get_tags
+from rooster._pyproject import update_pyproject_version
 
 
 class BumpType(Enum):
@@ -111,9 +112,7 @@ def update_file_version(path: Path, old_version: Version, new_version: Version) 
     elif path.name.lower() == "pyproject.toml":
         # Try the standard format
         try:
-            return update_toml_version(
-                path, "project.version", old_version, new_version
-            )
+            return update_pyproject_version(path, new_version)
         except KeyError:
             pass
 
