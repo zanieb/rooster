@@ -36,6 +36,7 @@ def release(
     directory: Path = typer.Argument(default=Path(".")),
     submodule: Path = None,
     bump: BumpType = None,
+    version: str = None,
     update_pyproject: bool = True,
     update_version_files: bool = True,
     changelog_file: str = None,
@@ -55,6 +56,10 @@ def release(
     If no bump type is provided, the bump type will be detected based on the pull request labels.
     """
     config = Config.from_directory(directory)
+
+    if bump and version:
+        typer.echo("You cannot specify both a version and a bump type.")
+        raise typer.Exit(1)
 
     # Get the last release version
     repo = repo_from_path(directory)
@@ -146,33 +151,37 @@ def release(
     for pull_request in pull_requests:
         labels.update(pull_request.labels)
 
-    # Determine the version bump type based on the labels or user provided choice
-    if bump:
-        bump_type = bump
+    # Determine the version bump type based on the labels or user provided
+    # choice
+    if version:
+        new_version = version
     else:
-        bump_type = BumpType.patch
-        for label in config.major_labels:
-            if label in labels:
-                typer.echo(f"Detected major version change due label {label}")
-                bump_type = BumpType.major
-                break
+        if bump:
+            bump_type = bump
+        else:
+            bump_type = BumpType.patch
+            for label in config.major_labels:
+                if label in labels:
+                    typer.echo(f"Detected major version change due label {label}")
+                    bump_type = BumpType.major
+                    break
 
-        for label in config.minor_labels:
-            if label in labels:
-                typer.echo(f"Detected minor version change due label {label}")
-                bump_type = BumpType.minor
-                break
+            for label in config.minor_labels:
+                if label in labels:
+                    typer.echo(f"Detected minor version change due label {label}")
+                    bump_type = BumpType.minor
+                    break
 
-        if bump_type == BumpType.patch:
-            typer.echo(
-                "Detected patch version change — did not see any major or minor labels"
-            )
+            if bump_type == BumpType.patch:
+                typer.echo(
+                    "Detected patch version change — did not see any major or minor labels"
+                )
+        new_version = bump_version(
+            # If there is no previous version, start at 0.0.0
+            last_version or Version("0.0.0"),
+            bump_type,
+        )
 
-    new_version = bump_version(
-        # If there is no previous version, start at 0.0.0
-        last_version or Version("0.0.0"),
-        bump_type,
-    )
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
