@@ -9,7 +9,7 @@ from rooster._changelog import (
 from rooster._config import Config
 from rooster._git import (
     GitLookupError,
-    get_commit_for_version,
+    get_commit_for_tag,
     get_commits_between_commits,
     get_initial_commit,
     get_latest_commit,
@@ -61,10 +61,10 @@ def release(
 
     # Get the last release version
     repo = repo_from_path(directory)
-    versions = versions_from_git_tags(config, repo)
-    last_version = get_latest_version(versions)
+    version_tags = versions_from_git_tags(config, repo)
+    last_version = get_latest_version(version_tags.items())
     last_version_commit = (
-        get_commit_for_version(config, repo, last_version)
+        get_commit_for_tag(config, repo, version_tags[last_version])
         if last_version
         else get_initial_commit(repo)
     )

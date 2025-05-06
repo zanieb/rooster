@@ -12,7 +12,7 @@ import marko.md_renderer
 
 from rooster._config import Config
 from rooster._github import PullRequest
-from rooster._versions import Version, get_previous_version, parse_versions
+from rooster._versions import Version, get_previous_version, parse_version
 
 VERSION_HEADING_PREFIX = "## "
 
@@ -420,27 +420,28 @@ def ensure_spacing(changelog: str) -> str:
     return changelog.rstrip("\n") + "\n"
 
 
-def get_versions_from_changelog(changelog: str) -> list[Version]:
+def get_versions_from_changelog(config: Config, changelog: str) -> list[Version]:
     """
     Get all versions from headings from the changelog
     """
 
-    return parse_versions(
+    return filter(
+        lambda x: x is not None,
         [
-            line[2:].strip()
+            parse_version(config, line[2:].strip())
             for line in changelog.splitlines()
             if line.startswith(VERSION_HEADING_PREFIX)
-        ]
+        ],
     )
 
 
-def extract_entry(changelog: str, version: Version) -> str | None:
+def extract_entry(config: Config, changelog: str, version: Version) -> str | None:
     """
     Extract an entry for the given version from the changelog
     """
     heading = f"{VERSION_HEADING_PREFIX}{version}\n\n"
 
-    versions = get_versions_from_changelog(changelog)
+    versions = get_versions_from_changelog(config, changelog)
     previous_version = get_previous_version(versions, version)
 
     # If there are no versions in the file, return `None`
