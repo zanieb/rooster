@@ -30,8 +30,7 @@ class Config(pydantic.BaseModel):
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
 
-    required_labels: frozenset[str] = frozenset()
-    required_labels_submodule: dict[str, frozenset[str]] = dict()
+    required_labels: list[str | SubmoduleRequiredLabels] = list()
     version_format: Literal["pep440", "cargo"] = "pep440"
     submodules: list[Path] = []
 
@@ -88,6 +87,14 @@ class Config(pydantic.BaseModel):
 
     model_config = pydantic.ConfigDict(alias_generator=to_kebab, populate_by_name=True)
 
+    def required_labels_for_submodule(self, path: Path) -> frozenset[str]:
+        for item in self.required_labels:
+            if isinstance(item, SubmoduleRequiredLabels) and item.name == path.name:
+                return item.labels
+
+    def global_required_labels(self) -> frozenset[str]:
+        return frozenset(item for item in self.required_labels if isinstance(item, str))
+
 
 class VersionFile(pydantic.BaseModel):
     path: Path
@@ -96,3 +103,8 @@ class VersionFile(pydantic.BaseModel):
 
     def __str__(self):
         return str(self.path)
+
+
+class SubmoduleRequiredLabels(pydantic.BaseModel):
+    name: str
+    labels: frozenset[str] = frozenset()
