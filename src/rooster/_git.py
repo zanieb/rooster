@@ -101,7 +101,11 @@ def get_commits_between_commits(
 
     # Walk backwards from the second commit until we find the first commit
     for commit in repo.walk(new_commit.id if new_commit else None):
-        if old_commit and commit.id == old_commit.id:
+        if (
+            old_commit
+            and commit.id == old_commit.id
+            or commit.id == "d07eefc408a59baa324541261b12f395e38b9344"
+        ):
             break
         yield commit
     else:
