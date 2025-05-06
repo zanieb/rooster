@@ -134,7 +134,7 @@ def release(
             if last_version
             else f"for submodule `{submodule_path}`"
         )
-        typer.echo(f"Found {len(changes)} commits {since}.")
+        typer.echo(f"Found {len(submodule_changes)} commits {since}.")
 
         # Determine the GitHub repository to read
         remote = get_remote_url(submodule)
