@@ -27,7 +27,7 @@ def versions_from_git_tags(
     tags = get_tags(config, repo)
     versions = {parse_version(config, tag): tag for tag in tags}
     # Remove invalid versions
-    versions.pop(None)
+    versions.pop(None, "")
     return versions
 
 
@@ -45,6 +45,8 @@ def parse_version(config: Config, version: str) -> Version | None:
     except InvalidVersion:
         # Ignore tags that are not valid versions
         return None
+
+    return version
 
 
 def get_latest_version(versions: list[Version]) -> Version | None:
