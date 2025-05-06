@@ -33,6 +33,7 @@ class Config(pydantic.BaseModel):
     required_labels: frozenset[str] = frozenset()
     required_labels_submodule: dict[str, frozenset[str]] = dict()
     version_format: Literal["pep440", "cargo"] = "pep440"
+    submodules: list[Path] = []
 
     changelog_file: str = "CHANGELOG.md"
     changelog_contributors: bool = True

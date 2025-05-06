@@ -33,7 +33,6 @@ app = typer.Typer(pretty_exceptions_enable=False)
 @app.command()
 def release(
     directory: Path = typer.Argument(default=Path(".")),
-    submodule: Path = None,
     bump: BumpType = None,
     version: str = None,
     update_version_files: bool = True,
@@ -60,6 +59,7 @@ def release(
         raise typer.Exit(1)
 
     # Get the last release version
+    typer.echo(f"Inspecting repository `{directory.name}`")
     repo = repo_from_path(directory)
     version_tags = versions_from_git_tags(config, repo)
     last_version = get_latest_version(version_tags.keys())
@@ -70,7 +70,12 @@ def release(
     )
     latest_commit = get_latest_commit(repo)
     if last_version:
-        typer.echo(f"Found last version tag {last_version}")
+        tag_display = (
+            f" (tag: {version_tags[last_version]})"
+            if version_tags[last_version] != str(last_version)
+            else ""
+        )
+        typer.echo(f"Found last version {last_version}{tag_display}")
         last_display = f"{str(last_version_commit.id)[:8]} ({last_version})"
     else:
         typer.echo(
@@ -103,9 +108,9 @@ def release(
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
-    if submodule:
-        submodule = repo_from_path(submodule)
-        submodule_path = Path(submodule.workdir).relative_to(repo.workdir)
+    for submodule_path in config.submodules:
+        typer.echo(f"Inspecting submodule `{submodule_path.name}`")
+        submodule = repo_from_path(submodule_path)
         last_submodule_commit = get_submodule_commit(
             repo, last_version_commit, submodule
         )
@@ -152,12 +157,14 @@ def release(
                 for pull_request in submodule_pull_requests
                 if pull_request.labels.intersection(required_labels)
             ]
-            if not submodule_pull_requests:
-                typer.echo("No pull requests found with required labels, aborting!")
-                raise typer.Exit(1)
-            typer.echo(
-                f"Found {len(submodule_pull_requests)} pull requests with required labels (out of {prefilter_count})."
-            )
+            if submodule_pull_requests:
+                typer.echo(
+                    f"Found {len(submodule_pull_requests)} pull requests with required labels (out of {prefilter_count})."
+                )
+            else:
+                typer.echo(
+                    f"No pull requests found with required labels for submodule `{submodule_path}`"
+                )
 
         pull_requests.extend(submodule_pull_requests)
 
