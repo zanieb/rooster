@@ -62,9 +62,9 @@ def release(
     # Get the last release version
     repo = repo_from_path(directory)
     version_tags = versions_from_git_tags(config, repo)
-    last_version = get_latest_version(version_tags.items())
+    last_version = get_latest_version(version_tags.keys())
     last_version_commit = (
-        get_commit_for_tag(config, repo, version_tags[last_version])
+        get_commit_for_tag(repo, version_tags[last_version])
         if last_version
         else get_initial_commit(repo)
     )
