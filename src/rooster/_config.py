@@ -89,7 +89,10 @@ class Config(pydantic.BaseModel):
 
     def required_labels_for_submodule(self, path: Path) -> frozenset[str]:
         for item in self.required_labels:
-            if isinstance(item, SubmoduleRequiredLabels) and item.name == path.name:
+            if (
+                isinstance(item, SubmoduleRequiredLabels)
+                and item.submodule == path.name
+            ):
                 return item.labels
 
     def global_required_labels(self) -> frozenset[str]:
@@ -106,5 +109,5 @@ class VersionFile(pydantic.BaseModel):
 
 
 class SubmoduleRequiredLabels(pydantic.BaseModel):
-    name: str
+    submodule: str
     labels: frozenset[str] = frozenset()
