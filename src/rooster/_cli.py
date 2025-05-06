@@ -150,7 +150,7 @@ def release(
         )
 
         # Filter the pull requests to relevant labels
-        if required_labels := config.required_labels_submodule.get(submodule_path):
+        if required_labels := config.required_labels_for_submodule(submodule_path):
             prefilter_count = len(submodule_pull_requests)
             submodule_pull_requests = [
                 pull_request
@@ -173,12 +173,12 @@ def release(
         raise typer.Exit(1)
 
     # Filter the pull requests to relevant labels
-    if config.required_labels:
+    if required_labels := config.global_required_labels():
         prefilter_count = len(pull_requests)
         pull_requests = [
             pull_request
             for pull_request in pull_requests
-            if pull_request.labels.intersection(config.required_labels)
+            if pull_request.labels.intersection(required_labels)
         ]
         if not pull_requests:
             typer.echo("No pull requests found with required labels, aborting!")
