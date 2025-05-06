@@ -32,14 +32,11 @@ def _parse_tag_reference(config: Config, reference: str) -> str:
     return reference[len(TAG_PREFIX + config.version_tag_prefix) :]
 
 
-def get_commit_for_version(
-    config: Config,
+def get_commit_for_tag(
     repo: git.repository.Repository,
-    version: Version,
+    tag: str,
 ) -> git.Commit:
-    commit = repo.lookup_reference(
-        TAG_PREFIX + config.version_tag_prefix + str(version)
-    ).peel()
+    commit = repo.lookup_reference(TAG_PREFIX + tag).peel()
     return commit
 
 

@@ -18,29 +18,33 @@ CARGO_PRE_MAP_REVERSE = {v: k for k, v in CARGO_PRE_MAP.items()}
 
 def versions_from_git_tags(
     config: Config, repo: git.repository.Repository
-) -> list[Version]:
+) -> dict[Version, str]:
     """
     Get versions of the project from git tags.
+
+    Returns a mapping of version to tag.
     """
     tags = get_tags(config, repo)
-    versions = parse_versions(tags)
+    versions = {parse_version(config, tag): tag for tag in tags}
+    # Remove invalid versions
+    versions.pop(None)
     return versions
 
 
-def parse_versions(version_strings: list[str]) -> list[Version]:
+def parse_version(config: Config, version: str) -> Version | None:
     """
     Parse version strings typed, validated objects.
 
     Invalid versions will be silently ignored.
     """
-    versions = []
-    for version in version_strings:
-        try:
-            versions.append(from_cargo_version(version))
-        except InvalidVersion:
-            # Ignore tags that are not valid versions
-            pass
-    return list(sorted(versions))
+    try:
+        if config.version_format == "cargo":
+            version = from_cargo_version(version)
+        else:
+            version = Version(version)
+    except InvalidVersion:
+        # Ignore tags that are not valid versions
+        return None
 
 
 def get_latest_version(versions: list[Version]) -> Version | None:
