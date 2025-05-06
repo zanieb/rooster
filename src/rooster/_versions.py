@@ -13,6 +13,7 @@ from rooster._config import BumpType, Config, VersionFile
 from rooster._git import get_tags
 
 CARGO_PRE_MAP = {"a": "alpha", "b": "beta", "rc": "rc"}
+CARGO_PRE_MAP_REVERSE = {v: k for k, v in CARGO_PRE_MAP.items()}
 
 
 def versions_from_git_tags(
@@ -35,7 +36,7 @@ def parse_versions(version_strings: list[str]) -> list[Version]:
     versions = []
     for version in version_strings:
         try:
-            versions.append(Version(version))
+            versions.append(from_cargo_version(version))
         except InvalidVersion:
             # Ignore tags that are not valid versions
             pass
@@ -113,6 +114,19 @@ def to_cargo_version(version: Version) -> str:
     if not version.is_prerelease:
         return f"{version.major}.{version.minor}.{version.micro}"
     return f"{version.major}.{version.minor}.{version.micro}-{CARGO_PRE_MAP[version.pre[0]]}.{version.pre[1]}"
+
+
+def from_cargo_version(version: str) -> Version:
+    """
+    Convert a version string from Cargo.toml to a Version object.
+    """
+    parts = version.split("-")
+    if len(parts) == 1:
+        return Version(parts[0])
+    else:
+        pre_parts = parts[1].split(".")
+        pre = (CARGO_PRE_MAP_REVERSE[pre_parts[0]], int(pre_parts[1]))
+        return Version(f"{parts[0]}{pre[0]}{pre[1]}")
 
 
 def update_version_file(
