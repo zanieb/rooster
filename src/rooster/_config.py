@@ -31,6 +31,7 @@ class Config(pydantic.BaseModel):
     patch_labels: frozenset[str] = frozenset(["fix"])
 
     required_labels: frozenset[str] = frozenset()
+    required_labels_submodule: dict[str, frozenset[str]] = dict()
     version_format: Literal["pep440", "cargo"] = "pep440"
 
     changelog_file: str = "CHANGELOG.md"

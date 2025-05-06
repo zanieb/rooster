@@ -140,9 +140,26 @@ def release(
 
         # Collect pull requests corresponding to each commit
         typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
-        pull_requests += get_pull_requests_for_commits(
+        submodule_pull_requests = get_pull_requests_for_commits(
             owner, repo_name, submodule_changes
         )
+
+        # Filter the pull requests to relevant labels
+        if required_labels := config.required_labels_submodule.get(submodule_path):
+            prefilter_count = len(submodule_pull_requests)
+            submodule_pull_requests = [
+                pull_request
+                for pull_request in submodule_pull_requests
+                if pull_request.labels.intersection(required_labels)
+            ]
+            if not submodule_pull_requests:
+                typer.echo("No pull requests found with required labels, aborting!")
+                raise typer.Exit(1)
+            typer.echo(
+                f"Found {len(submodule_pull_requests)} pull requests with required labels (out of {prefilter_count})."
+            )
+
+        pull_requests.extend(submodule_pull_requests)
 
     if not pull_requests:
         typer.echo("No pull requests found, aborting!")
