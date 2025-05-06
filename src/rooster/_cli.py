@@ -159,7 +159,7 @@ def release(
             ]
             if submodule_pull_requests:
                 typer.echo(
-                    f"Found {len(submodule_pull_requests)} pull requests with required labels (out of {prefilter_count})."
+                    f"Found {len(submodule_pull_requests)} (of {prefilter_count}) pull requests with required labels."
                 )
             else:
                 typer.echo(
@@ -184,7 +184,7 @@ def release(
             typer.echo("No pull requests found with required labels, aborting!")
             raise typer.Exit(1)
         typer.echo(
-            f"Found {len(pull_requests)} pull requests with required labels (out of {prefilter_count})."
+            f"Found {len(pull_requests)} (of {prefilter_count}) pull requests with required labels."
         )
 
     # Collect the unique set of labels changed
