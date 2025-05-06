@@ -107,7 +107,7 @@ def get_commits_between_commits(
     else:
         if old_commit and new_commit:
             raise GitLookupError(
-                f"Could not find commit {old_commit.id} in ancestors of {new_commit.id}; is the {old_commit.id} on a different branch?"
+                f"Could not find commit {old_commit.id} in ancestors of {new_commit.id}; is {old_commit.id} on a different branch?"
             )
 
 
