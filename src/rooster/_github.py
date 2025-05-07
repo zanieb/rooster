@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import textwrap
+from typing import Self
 
 import httpx
 
@@ -32,6 +33,9 @@ class PullRequest:
 
     def __lt__(self, other):
         return self.number < other.number
+
+    def with_title(self, title: str) -> Self:
+        return dataclasses.replace(self, title=title)
 
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)

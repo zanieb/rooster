@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Generator
 
 import pygit2 as git
-from packaging.version import Version
 
 from rooster._config import Config
 
@@ -32,14 +31,11 @@ def _parse_tag_reference(config: Config, reference: str) -> str:
     return reference[len(TAG_PREFIX + config.version_tag_prefix) :]
 
 
-def get_commit_for_version(
-    config: Config,
+def get_commit_for_tag(
     repo: git.repository.Repository,
-    version: Version,
+    tag: str,
 ) -> git.Commit:
-    commit = repo.lookup_reference(
-        TAG_PREFIX + config.version_tag_prefix + str(version)
-    ).peel()
+    commit = repo.lookup_reference(TAG_PREFIX + tag).peel()
     return commit
 
 
@@ -104,13 +100,17 @@ def get_commits_between_commits(
 
     # Walk backwards from the second commit until we find the first commit
     for commit in repo.walk(new_commit.id if new_commit else None):
-        if old_commit and commit.id == old_commit.id:
+        if (
+            old_commit
+            and commit.id == old_commit.id
+            or commit.id == "d07eefc408a59baa324541261b12f395e38b9344"
+        ):
             break
         yield commit
     else:
         if old_commit and new_commit:
             raise GitLookupError(
-                f"Could not find commit {old_commit.id} in ancestors of {new_commit.id}; is the {old_commit.id} on a different branch?"
+                f"Could not find commit {old_commit.id} in ancestors of {new_commit.id}; is {old_commit.id} on a different branch?"
             )
 
 

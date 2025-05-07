@@ -12,7 +12,7 @@ import marko.md_renderer
 
 from rooster._config import Config
 from rooster._github import PullRequest
-from rooster._versions import Version, get_previous_version, parse_versions
+from rooster._versions import Version, get_previous_version, parse_version
 
 VERSION_HEADING_PREFIX = "## "
 
@@ -249,6 +249,12 @@ class VersionSection(Section):
         # Initialize the sections dictionary to match the changelog sections config for
         # ordering
         sections = {section: [] for section in config.changelog_sections.values()}
+
+        # If there are no sections, put all changes into "Changes", otherwise,
+        # use `Other changes`
+        other_section = "Other changes" if sections else "Changes"
+        sections[other_section] = []
+
         authors = {
             pull_request.author
             for pull_request in pull_requests
@@ -258,8 +264,6 @@ class VersionSection(Section):
         # De-duplicate pull requests and sort into sections
         for pull_request in sorted(set(pull_requests)):
             for label in pull_request.labels:
-                if label in config.changelog_ignore_labels:
-                    break
                 if label in without_sections:
                     break
             else:
@@ -273,9 +277,7 @@ class VersionSection(Section):
                 else:
                     if not only_sections:
                         sections[
-                            config.changelog_sections.get(
-                                "__unknown__", "Other changes"
-                            )
+                            config.changelog_sections.get("__unknown__", other_section)
                         ].append(pull_request)
 
         children = []
@@ -420,27 +422,28 @@ def ensure_spacing(changelog: str) -> str:
     return changelog.rstrip("\n") + "\n"
 
 
-def get_versions_from_changelog(changelog: str) -> list[Version]:
+def get_versions_from_changelog(config: Config, changelog: str) -> list[Version]:
     """
     Get all versions from headings from the changelog
     """
 
-    return parse_versions(
+    return filter(
+        lambda x: x is not None,
         [
-            line[2:].strip()
+            parse_version(config, line[2:].strip())
             for line in changelog.splitlines()
             if line.startswith(VERSION_HEADING_PREFIX)
-        ]
+        ],
     )
 
 
-def extract_entry(changelog: str, version: Version) -> str | None:
+def extract_entry(config: Config, changelog: str, version: Version) -> str | None:
     """
     Extract an entry for the given version from the changelog
     """
     heading = f"{VERSION_HEADING_PREFIX}{version}\n\n"
 
-    versions = get_versions_from_changelog(changelog)
+    versions = get_versions_from_changelog(config, changelog)
     previous_version = get_previous_version(versions, version)
 
     # If there are no versions in the file, return `None`

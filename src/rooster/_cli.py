@@ -9,7 +9,7 @@ from rooster._changelog import (
 from rooster._config import Config
 from rooster._git import (
     GitLookupError,
-    get_commit_for_version,
+    get_commit_for_tag,
     get_commits_between_commits,
     get_initial_commit,
     get_latest_commit,
@@ -18,13 +18,12 @@ from rooster._git import (
     repo_from_path,
 )
 from rooster._github import PullRequest, get_pull_requests_for_commits, parse_remote_url
-from rooster._pyproject import PyProjectError, update_pyproject_version
 from rooster._versions import (
     BumpType,
     Version,
     bump_version,
     get_latest_version,
-    update_file_version,
+    update_version_file,
     versions_from_git_tags,
 )
 
@@ -34,10 +33,8 @@ app = typer.Typer(pretty_exceptions_enable=False)
 @app.command()
 def release(
     directory: Path = typer.Argument(default=Path(".")),
-    submodule: Path = None,
     bump: BumpType = None,
     version: str = None,
-    update_pyproject: bool = True,
     update_version_files: bool = True,
     changelog_file: str = None,
     only_sections: list[str] = typer.Option(
@@ -62,17 +59,23 @@ def release(
         raise typer.Exit(1)
 
     # Get the last release version
+    typer.echo(f"Inspecting repository `{directory.name}`")
     repo = repo_from_path(directory)
-    versions = versions_from_git_tags(config, repo)
-    last_version = get_latest_version(versions)
+    version_tags = versions_from_git_tags(config, repo)
+    last_version = get_latest_version(version_tags.keys())
     last_version_commit = (
-        get_commit_for_version(config, repo, last_version)
+        get_commit_for_tag(repo, version_tags[last_version])
         if last_version
         else get_initial_commit(repo)
     )
     latest_commit = get_latest_commit(repo)
     if last_version:
-        typer.echo(f"Found last version tag {last_version}")
+        tag_display = (
+            f" (tag: {version_tags[last_version]})"
+            if version_tags[last_version] != str(last_version)
+            else ""
+        )
+        typer.echo(f"Found last version {last_version}{tag_display}")
         last_display = f"{str(last_version_commit.id)[:8]} ({last_version})"
     else:
         typer.echo(
@@ -105,9 +108,9 @@ def release(
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
     pull_requests = get_pull_requests_for_commits(owner, repo_name, changes)
 
-    if submodule:
-        submodule = repo_from_path(submodule)
-        submodule_path = Path(submodule.workdir).relative_to(repo.workdir)
+    for submodule_path in config.submodules:
+        typer.echo(f"Inspecting submodule `{submodule_path.name}`")
+        submodule = repo_from_path(submodule_path)
         last_submodule_commit = get_submodule_commit(
             repo, last_version_commit, submodule
         )
@@ -131,7 +134,7 @@ def release(
             if last_version
             else f"for submodule `{submodule_path}`"
         )
-        typer.echo(f"Found {len(changes)} commits {since}.")
+        typer.echo(f"Found {len(submodule_changes)} commits {since}.")
 
         # Determine the GitHub repository to read
         remote = get_remote_url(submodule)
@@ -142,8 +145,78 @@ def release(
 
         # Collect pull requests corresponding to each commit
         typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
-        pull_requests += get_pull_requests_for_commits(
+        submodule_pull_requests = get_pull_requests_for_commits(
             owner, repo_name, submodule_changes
+        )
+
+        # Filter the pull requests to relevant labels
+        if required_labels := config.required_labels_for_submodule(submodule_path):
+            prefilter_count = len(submodule_pull_requests)
+            submodule_pull_requests = [
+                pull_request
+                for pull_request in submodule_pull_requests
+                if pull_request.labels.intersection(required_labels)
+            ]
+            if submodule_pull_requests:
+                typer.echo(
+                    f"Found {len(submodule_pull_requests)} (of {prefilter_count}) pull requests with required labels."
+                )
+            else:
+                typer.echo(
+                    f"No pull requests found with required labels for submodule `{submodule_path}`"
+                )
+
+        if ignored_labels := config.ignored_labels_for_submodule(submodule_path):
+            prefilter_count = len(submodule_pull_requests)
+            submodule_pull_requests = [
+                pull_request
+                for pull_request in submodule_pull_requests
+                if not pull_request.labels.intersection(ignored_labels)
+            ]
+            if submodule_pull_requests:
+                typer.echo(
+                    f"Found {len(submodule_pull_requests)} (of {prefilter_count}) pull requests after applying ignored labels."
+                )
+            else:
+                typer.echo(
+                    f"No pull requests found for submodule `{submodule_path}` after applying ignored labels."
+                )
+
+        pull_requests.extend(submodule_pull_requests)
+
+    if not pull_requests:
+        typer.echo("No pull requests found, aborting!")
+        raise typer.Exit(1)
+
+    # Filter the pull requests to relevant labels
+    if required_labels := config.global_required_labels():
+        prefilter_count = len(pull_requests)
+        pull_requests = [
+            pull_request
+            for pull_request in pull_requests
+            if pull_request.labels.intersection(required_labels)
+        ]
+        if not pull_requests:
+            typer.echo("No pull requests found with required labels, aborting!")
+            raise typer.Exit(1)
+        typer.echo(
+            f"Found {len(pull_requests)} (of {prefilter_count}) pull requests with required labels."
+        )
+
+    if ignored_labels := config.global_ignored_labels():
+        prefilter_count = len(pull_requests)
+        pull_requests = [
+            pull_request
+            for pull_request in pull_requests
+            if not pull_request.labels.intersection(ignored_labels)
+        ]
+        if not pull_requests:
+            typer.echo(
+                "No pull requests found after applying ignored labels, aborting!"
+            )
+            raise typer.Exit(1)
+        typer.echo(
+            f"Found {len(pull_requests)} (of {prefilter_count}) pull requests after applying ignored labels."
         )
 
     # Collect the unique set of labels changed
@@ -159,7 +232,7 @@ def release(
         if bump:
             bump_type = bump
         else:
-            bump_type = BumpType.patch
+            bump_type = config.default_bump_type
             for label in config.major_labels:
                 if label in labels:
                     typer.echo(f"Detected major version change due label {label}")
@@ -182,6 +255,18 @@ def release(
             bump_type,
         )
 
+    if config.trim_title_prefixes:
+        # TODO(zanieb): This is a little sloppy, could be written more simply
+        trimmed_pull_requests = []
+        for pull_request in pull_requests:
+            for prefix in config.trim_title_prefixes:
+                if pull_request.title.startswith(prefix):
+                    pull_request = pull_request.with_title(
+                        pull_request.title[len(prefix) :].strip()
+                    )
+            trimmed_pull_requests.append(pull_request)
+        pull_requests = trimmed_pull_requests
+
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
@@ -200,18 +285,12 @@ def release(
     )
     typer.echo("Updated changelog")
 
-    if update_pyproject:
-        try:
-            update_pyproject_version(directory.joinpath("pyproject.toml"), new_version)
-            typer.echo("Updated version in pyproject.toml")
-        except PyProjectError as exc:
-            typer.echo(f"Failed to update pyproject.toml: {exc}")
-            raise typer.Exit(1)
-
     if update_version_files:
-        for path in config.version_files:
-            update_file_version(path, last_version, new_version)
-            typer.echo(f"Updated version in {path}")
+        for version_file in config.version_files:
+            update_version_file(
+                version_file, last_version or Version("0.0.0"), new_version
+            )
+            typer.echo(f"Updated version in {version_file}")
 
 
 # When only one command exists, typer will treat it as the root command instead
