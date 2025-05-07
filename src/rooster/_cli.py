@@ -166,6 +166,22 @@ def release(
                     f"No pull requests found with required labels for submodule `{submodule_path}`"
                 )
 
+        if ignored_labels := config.ignored_labels_for_submodule(submodule_path):
+            prefilter_count = len(submodule_pull_requests)
+            submodule_pull_requests = [
+                pull_request
+                for pull_request in submodule_pull_requests
+                if not pull_request.labels.intersection(ignored_labels)
+            ]
+            if submodule_pull_requests:
+                typer.echo(
+                    f"Found {len(submodule_pull_requests)} (of {prefilter_count}) pull requests after applying ignored labels."
+                )
+            else:
+                typer.echo(
+                    f"No pull requests found for submodule `{submodule_path}` after applying ignored labels."
+                )
+
         pull_requests.extend(submodule_pull_requests)
 
     if not pull_requests:
@@ -185,6 +201,22 @@ def release(
             raise typer.Exit(1)
         typer.echo(
             f"Found {len(pull_requests)} (of {prefilter_count}) pull requests with required labels."
+        )
+
+    if ignored_labels := config.global_ignored_labels():
+        prefilter_count = len(pull_requests)
+        pull_requests = [
+            pull_request
+            for pull_request in pull_requests
+            if not pull_request.labels.intersection(ignored_labels)
+        ]
+        if not pull_requests:
+            typer.echo(
+                "No pull requests found after applying ignored labels, aborting!"
+            )
+            raise typer.Exit(1)
+        typer.echo(
+            f"Found {len(pull_requests)} (of {prefilter_count}) pull requests after applying ignored labels."
         )
 
     # Collect the unique set of labels changed
