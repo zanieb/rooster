@@ -223,6 +223,18 @@ def release(
             bump_type,
         )
 
+    if config.trim_title_prefixes:
+        # TODO(zanieb): This is a little sloppy, could be written more simply
+        trimmed_pull_requests = []
+        for pull_request in pull_requests:
+            for prefix in config.trim_title_prefixes:
+                if pull_request.title.startswith(prefix):
+                    pull_request = pull_request.with_title(
+                        pull_request.title[len(prefix) :].strip()
+                    )
+            trimmed_pull_requests.append(pull_request)
+        pull_requests = trimmed_pull_requests
+
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version

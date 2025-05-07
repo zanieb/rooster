@@ -43,6 +43,7 @@ class Config(pydantic.BaseModel):
     change_template: str = (
         "- {pull_request.title} ([#{pull_request.number}]({pull_request.url}))"
     )
+    trim_title_prefixes: frozenset[str] = frozenset()
 
     # Paths to files to replace versions at
     version_files: list[Path | VersionFile] = [Path("pyproject.toml")]
