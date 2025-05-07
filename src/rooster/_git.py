@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Generator
 
 import pygit2 as git
-from packaging.version import Version
 
 from rooster._config import Config
 
