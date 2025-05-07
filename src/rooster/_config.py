@@ -36,11 +36,7 @@ class Config(pydantic.BaseModel):
 
     changelog_file: str = "CHANGELOG.md"
     changelog_contributors: bool = True
-    changelog_sections: dict[str, str] = {
-        "breaking": "Breaking changes",
-        "feature": "New features",
-        "fix": "Bug fixes",
-    }
+    changelog_sections: dict[str, str] = {}
     changelog_ignore_labels: frozenset[str] = frozenset([])
     changelog_ignore_authors: frozenset[str] = frozenset(["dependabot"])
 
@@ -56,11 +52,6 @@ class Config(pydantic.BaseModel):
 
     # A prefix to identify tags as versions e.g. "v"
     version_tag_prefix: str = ""
-
-    @pydantic.validator("changelog_sections", always=True)
-    def require_unknown_key(cls, value):
-        value.setdefault("__unknown__", "Other changes")
-        return value
 
     @classmethod
     def from_directory(cls: type[Self], dirpath: Path) -> Self:

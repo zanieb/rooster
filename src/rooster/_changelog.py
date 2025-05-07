@@ -249,6 +249,12 @@ class VersionSection(Section):
         # Initialize the sections dictionary to match the changelog sections config for
         # ordering
         sections = {section: [] for section in config.changelog_sections.values()}
+
+        # If there are no sections, put all changes into "Changes", otherwise,
+        # use `Other changes`
+        other_section = "Other changes" if sections else "Changes"
+        sections[other_section] = []
+
         authors = {
             pull_request.author
             for pull_request in pull_requests
@@ -273,9 +279,7 @@ class VersionSection(Section):
                 else:
                     if not only_sections:
                         sections[
-                            config.changelog_sections.get(
-                                "__unknown__", "Other changes"
-                            )
+                            config.changelog_sections.get("__unknown__", other_section)
                         ].append(pull_request)
 
         children = []
