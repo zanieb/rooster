@@ -30,7 +30,8 @@ class Config(pydantic.BaseModel):
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
 
-    required_labels: list[str | SubmoduleRequiredLabels] = list()
+    require_labels: list[str | SubmoduleLabels] = list()
+    ignore_labels: list[str | SubmoduleLabels] = list()
     version_format: Literal["pep440", "cargo"] = "pep440"
     submodules: list[Path] = []
 
@@ -80,15 +81,22 @@ class Config(pydantic.BaseModel):
     model_config = pydantic.ConfigDict(alias_generator=to_kebab, populate_by_name=True)
 
     def required_labels_for_submodule(self, path: Path) -> frozenset[str]:
-        for item in self.required_labels:
-            if (
-                isinstance(item, SubmoduleRequiredLabels)
-                and item.submodule == path.name
-            ):
+        for item in self.require_labels:
+            if isinstance(item, SubmoduleLabels) and item.submodule == path.name:
+                return item.labels
+
+    def ignored_labels_for_submodule(self, path: Path) -> frozenset[str]:
+        for item in self.ignore_labels:
+            if isinstance(item, SubmoduleLabels) and item.submodule == path.name:
                 return item.labels
 
     def global_required_labels(self) -> frozenset[str]:
-        return frozenset(item for item in self.required_labels if isinstance(item, str))
+        return frozenset(item for item in self.require_labels if isinstance(item, str))
+
+    def global_ignored_labels(self) -> frozenset[str]:
+        return frozenset(
+            item for item in self.ignore_labels if isinstance(item, str)
+        ).union(set(self.changelog_ignore_labels))
 
 
 class VersionFile(pydantic.BaseModel):
@@ -100,6 +108,6 @@ class VersionFile(pydantic.BaseModel):
         return str(self.path)
 
 
-class SubmoduleRequiredLabels(pydantic.BaseModel):
+class SubmoduleLabels(pydantic.BaseModel):
     submodule: str
     labels: frozenset[str] = frozenset()
