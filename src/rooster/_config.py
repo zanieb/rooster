@@ -32,6 +32,7 @@ class Config(pydantic.BaseModel):
 
     require_labels: list[str | SubmoduleLabels] = list()
     ignore_labels: list[str | SubmoduleLabels] = list()
+    section_labels: dict[str, list[str]] = {}
     version_format: Literal["pep440", "cargo"] = "pep440"
     submodules: list[Path] = []
 
