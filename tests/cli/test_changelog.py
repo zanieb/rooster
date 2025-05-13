@@ -402,7 +402,7 @@ def test_update_changelog_only_sections(tmp_path):
                 repo_owner="owner",
             ),
         ],
-        only_sections={"b"},
+        only_sections={"B"},
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
