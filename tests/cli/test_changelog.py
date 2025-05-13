@@ -30,7 +30,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.1.0
 
-### Other changes
+### Changes
 
 - Test ([#1](https://github.com/owner/repo/pull/1))
 
@@ -69,7 +69,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.1.0
 
-### Other changes
+### Changes
 
 - Another test ([#2](https://github.com/owner/repo/pull/2))
 - Test ([#1](https://github.com/owner/repo/pull/1))
@@ -108,7 +108,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.2.0
 
-### Other changes
+### Changes
 
 - Another test ([#4](https://github.com/owner/repo/pull/4))
 - Test ([#3](https://github.com/owner/repo/pull/3))
@@ -119,7 +119,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.1.0
 
-### Other changes
+### Changes
 
 - Another test ([#2](https://github.com/owner/repo/pull/2))
 - Test ([#1](https://github.com/owner/repo/pull/1))
@@ -157,7 +157,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.3.0
 
-### Other changes
+### Changes
 
 - Another test ([#7](https://github.com/owner/repo/pull/7))
 - Test ([#6](https://github.com/owner/repo/pull/6))
@@ -168,7 +168,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.2.0
 
-### Other changes
+### Changes
 
 - Another test ([#4](https://github.com/owner/repo/pull/4))
 - Test ([#3](https://github.com/owner/repo/pull/3))
@@ -179,7 +179,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.1.0
 
-### Other changes
+### Changes
 
 - Another test ([#2](https://github.com/owner/repo/pull/2))
 - Test ([#1](https://github.com/owner/repo/pull/1))
@@ -225,7 +225,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.3.0
 
-### Other changes
+### Changes
 
 - Another test ([#7](https://github.com/owner/repo/pull/7))
 - Test ([#6](https://github.com/owner/repo/pull/6))
@@ -236,7 +236,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.2.0
 
-### Other changes
+### Changes
 
 - Another test ([#4](https://github.com/owner/repo/pull/4))
 - Another test ([#5](https://github.com/owner/repo/pull/5))
@@ -248,7 +248,7 @@ def test_update_changelog(tmp_path):
 
 ## 0.1.0
 
-### Other changes
+### Changes
 
 - Another test ([#2](https://github.com/owner/repo/pull/2))
 - Test ([#1](https://github.com/owner/repo/pull/1))
