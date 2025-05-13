@@ -227,7 +227,7 @@ def release(
     # Determine the version bump type based on the labels or user provided
     # choice
     if version:
-        new_version = version
+        new_version = Version(version)
     else:
         if bump:
             bump_type = bump
