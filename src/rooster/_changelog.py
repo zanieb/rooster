@@ -12,7 +12,12 @@ import marko.md_renderer
 
 from rooster._config import Config
 from rooster._github import PullRequest
-from rooster._versions import Version, get_previous_version, parse_version
+from rooster._versions import (
+    Version,
+    get_previous_version,
+    parse_version,
+    to_cargo_version,
+)
 
 VERSION_HEADING_PREFIX = "## "
 
@@ -121,9 +126,15 @@ class Changelog(Document):
         """
         return VersionSection.from_elements(self, self.document.children, level=level)
 
-    def get_version_section(self, version: Version) -> VersionSection | None:
+    def get_version_section(
+        self, config: Config, version: Version
+    ) -> VersionSection | None:
         for section in self.versions():
-            if section.version == str(version):
+            if section.version == (
+                to_cargo_version(version)
+                if config.version_format == "cargo"
+                else str(version)
+            ):
                 return section
         return None
 
@@ -304,13 +315,18 @@ class VersionSection(Section):
             children.append(section.element)
             children.extend(section.children)
 
-        heading_element = new_heading(str(version), level=level)
+        version = (
+            to_cargo_version(version)
+            if config.version_format == "cargo"
+            else str(version)
+        )
+        heading_element = new_heading(version, level=level)
 
         return cls(
             document=document,
             element=heading_element,
-            title=str(version),
-            version=str(version),
+            title=version,
+            version=version,
             children=children,
         )
 
@@ -441,7 +457,10 @@ def extract_entry(config: Config, changelog: str, version: Version) -> str | Non
     """
     Extract an entry for the given version from the changelog
     """
-    heading = f"{VERSION_HEADING_PREFIX}{version}\n\n"
+    version_str = (
+        to_cargo_version(version) if config.version_format == "cargo" else str(version)
+    )
+    heading = f"{VERSION_HEADING_PREFIX}{version_str}\n\n"
 
     versions = get_versions_from_changelog(config, changelog)
     previous_version = get_previous_version(versions, version)
@@ -450,8 +469,19 @@ def extract_entry(config: Config, changelog: str, version: Version) -> str | Non
     if not previous_version and heading not in changelog:
         return None
 
+    previous_version_str = (
+        (
+            to_cargo_version(version)
+            if config.version_format == "cargo"
+            else str(version)
+        )
+        if previous_version
+        else None
+    )
     previous_heading = (
-        f"{VERSION_HEADING_PREFIX}{previous_version}\n\n" if previous_version else None
+        f"{VERSION_HEADING_PREFIX}{previous_version_str}\n\n"
+        if previous_version
+        else None
     )
 
     if heading not in changelog:
