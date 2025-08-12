@@ -6,7 +6,7 @@ from rooster._changelog import (
     Changelog,
     VersionSection,
 )
-from rooster._config import Config
+from rooster._config import Config, SubstitutionEntry
 from rooster._git import (
     GitLookupError,
     get_commit_for_tag,
@@ -23,6 +23,7 @@ from rooster._versions import (
     Version,
     bump_version,
     get_latest_version,
+    process_substitutions,
     update_version_file,
     versions_from_git_tags,
 )
@@ -286,10 +287,15 @@ def release(
     typer.echo("Updated changelog")
 
     if update_version_files:
+        old_version = last_version or Version("0.0.0")
         for version_file in config.version_files:
-            update_version_file(
-                version_file, last_version or Version("0.0.0"), new_version
-            )
+            if isinstance(version_file, SubstitutionEntry):
+                for match in directory.glob(version_file.target):
+                    process_substitutions(
+                        match, old_version, new_version, version_file.replace
+                    )
+            else:
+                update_version_file(version_file, old_version, new_version)
             typer.echo(f"Updated version in {version_file}")
 
 

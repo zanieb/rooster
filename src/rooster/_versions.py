@@ -170,6 +170,26 @@ def update_version_file(
         )
 
 
+def process_substitutions(
+    match: Path,
+    old_version: Version,
+    new_version: Version,
+    replacement: str | None = None,
+) -> None:
+    """Process substitutions in a matched file.
+
+    When the replacement is None it will replace instances
+    of the last version with the new version.
+    """
+    new_version_str = str(new_version)
+    contents = match.read_text()
+    if replacement is None:
+        contents = contents.replace(str(old_version), new_version_str)
+    else:
+        contents = contents.replace(replacement, new_version_str)
+    match.write_text(contents)
+
+
 def update_text_version(path: Path, old_version: str, new_version: str) -> None:
     """
     Update the version in a basic text file.
