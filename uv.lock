@@ -391,7 +391,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.4.2" },
     { name = "pygit2", specifier = ">=1.13.1" },
     { name = "tqdm", specifier = ">=4.66.1" },
-    { name = "typer", specifier = ">=0.9.0" },
+    { name = "typer", specifier = ">=0.15.0" },
 ]
 
 [package.metadata.requires-dev]
