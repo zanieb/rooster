@@ -47,7 +47,9 @@ class Config(pydantic.BaseModel):
     trim_title_prefixes: frozenset[str] = frozenset()
 
     # Paths to files to replace versions at
-    version_files: list[Path | VersionFile] = [Path("pyproject.toml")]
+    version_files: list[Path | VersionFile | SubstitutionEntry] = [
+        Path("pyproject.toml")
+    ]
 
     # The default version bump to use
     default_bump_type: BumpType = BumpType.patch
@@ -106,6 +108,14 @@ class VersionFile(pydantic.BaseModel):
 
     def __str__(self):
         return str(self.path)
+
+
+class SubstitutionEntry(pydantic.BaseModel):
+    target: str
+    replace: str | None = None
+
+    def __str__(self):
+        return str(self.target)
 
 
 class SubmoduleLabels(pydantic.BaseModel):
