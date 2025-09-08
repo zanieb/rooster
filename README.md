@@ -16,22 +16,6 @@ Prepares a new release, which:
 rooster release [<path>] [--bump major|minor|patch]
 ```
 
-### Generate a changelog entry for a release
-
-Generates a changelog entry for the current or given version
-
-```
-rooster changelog [<path>] [--version <version>]
-```
-
-### Generate the contributor list for a release
-
-Generates a contributor list for the current or given version
-
-```
-rooster contributors [<path>] [--verison <version>]
-```
-
 ### Caching
 
 Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may disable this behavior with `ROOSTER_NO_CACHE=1`.
