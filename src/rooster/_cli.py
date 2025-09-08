@@ -312,6 +312,7 @@ def update_changelog(
     pull_requests: list[PullRequest],
     only_sections: set[str] = set(),
     without_sections: set[str] = set(),
+    release_date=None,
 ):
     if not changelog_file.exists():
         changelog = Changelog.new()
@@ -327,6 +328,7 @@ def update_changelog(
         pull_requests=pull_requests,
         only_sections=only_sections,
         without_sections=without_sections,
+        release_date=release_date,
     )
 
     # TODO(zanieb): Implement smart merging here

@@ -4,6 +4,7 @@ import abc
 import copy
 from collections import defaultdict
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Iterable, Self, cast
 
@@ -258,6 +259,7 @@ class VersionSection(Section):
         only_sections: set[str],
         without_sections: set[str],
         level: int = 2,
+        release_date: date | None = None,
     ) -> Self:
         section_labels = defaultdict(list, copy.deepcopy(config.section_labels))
 
@@ -331,12 +333,22 @@ class VersionSection(Section):
         )
         heading_element = new_heading(version, level=level)
 
+        # Add release date paragraph
+        if release_date is None:
+            release_date = date.today()
+        date_str = release_date.strftime("%Y-%m-%d")
+        release_date_text = f"Released on {date_str}."
+        release_date_paragraph = marko.parse(release_date_text + "\n").children[0]
+
+        # Insert release date at the beginning of children
+        all_children = [release_date_paragraph, marko.block.BlankLine] + children
+
         return cls(
             document=document,
             element=heading_element,
             title=version,
             version=version,
-            children=children,
+            children=all_children,
         )
 
     def as_document(self) -> Document:

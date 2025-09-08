@@ -1,3 +1,4 @@
+from datetime import date
 from pathlib import Path
 
 from inline_snapshot import snapshot
@@ -24,11 +25,14 @@ def test_update_changelog(tmp_path):
                 repo_owner="owner",
             )
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -63,11 +67,14 @@ def test_update_changelog(tmp_path):
                 repo_owner="owner",
             ),
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -102,11 +109,14 @@ def test_update_changelog(tmp_path):
                 repo_owner="owner",
             ),
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.2.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -118,6 +128,8 @@ def test_update_changelog(tmp_path):
 - [@author](https://github.com/author)
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -151,11 +163,14 @@ def test_update_changelog(tmp_path):
                 repo_owner="owner",
             ),
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.3.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -168,6 +183,8 @@ def test_update_changelog(tmp_path):
 
 ## 0.2.0
 
+Released on 2024-09-01.
+
 ### Changes
 
 - Another test ([#4](https://github.com/owner/repo/pull/4))
@@ -178,6 +195,8 @@ def test_update_changelog(tmp_path):
 - [@author](https://github.com/author)
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -219,11 +238,14 @@ def test_update_changelog(tmp_path):
                 repo_owner="owner",
             ),
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.3.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -236,6 +258,8 @@ def test_update_changelog(tmp_path):
 
 ## 0.2.0
 
+Released on 2024-09-01.
+
 ### Changes
 
 - Another test ([#4](https://github.com/owner/repo/pull/4))
@@ -247,6 +271,8 @@ def test_update_changelog(tmp_path):
 - [@author](https://github.com/author)
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### Changes
 
@@ -275,11 +301,14 @@ def test_update_changelog_sections(tmp_path):
                 repo_owner="owner",
             )
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### A
 
@@ -314,11 +343,14 @@ def test_update_changelog_sections(tmp_path):
                 repo_owner="owner",
             ),
         ],
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### A
 
@@ -360,11 +392,14 @@ def test_update_changelog_without_sections(tmp_path):
             ),
         ],
         without_sections={"b"},
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### A
 
@@ -403,11 +438,14 @@ def test_update_changelog_only_sections(tmp_path):
             ),
         ],
         only_sections={"B"},
+        release_date=date(2024, 9, 1),
     )
     assert changelog.read_text() == snapshot("""\
 # Changelog
 
 ## 0.1.0
+
+Released on 2024-09-01.
 
 ### B
 
