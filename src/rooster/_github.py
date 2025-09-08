@@ -24,12 +24,7 @@ class PullRequest:
     author: str
     repo_name: str
     repo_owner: str
-
-    @property
-    def url(self):
-        return (
-            f"https://github.com/{self.repo_owner}/{self.repo_name}/pull/{self.number}"
-        )
+    url: str
 
     def __lt__(self, other):
         return self.number < other.number
@@ -167,6 +162,7 @@ def get_pull_requests_for_commits(
                                         node {
                                             title
                                             number
+                                            url
                                             author {
                                                 login
                                             }
@@ -245,6 +241,7 @@ def get_pull_requests_for_commits(
                             author=pull_request["author"]["login"],
                             repo_name=repo_name,
                             repo_owner=owner,
+                            url=pull_request["url"],
                         )
                     )
 

@@ -22,6 +22,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
             )
         ],
     )
@@ -53,6 +54,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
             ),
             PullRequest(
                 title="Another test",
@@ -61,6 +63,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/2",
             ),
         ],
     )
@@ -92,6 +95,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/3",
             ),
             PullRequest(
                 title="Another test",
@@ -100,6 +104,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/4",
             ),
         ],
     )
@@ -141,6 +146,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/6",
             ),
             PullRequest(
                 title="Another test",
@@ -149,6 +155,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/7",
             ),
         ],
     )
@@ -201,6 +208,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/3",
             ),
             PullRequest(
                 title="Another test",
@@ -209,6 +217,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/4",
             ),
             PullRequest(
                 title="Another test",
@@ -217,6 +226,7 @@ def test_update_changelog(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/5",
             ),
         ],
     )
@@ -273,6 +283,7 @@ def test_update_changelog_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
             )
         ],
     )
@@ -304,6 +315,7 @@ def test_update_changelog_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
             ),
             PullRequest(
                 title="Another test",
@@ -312,6 +324,7 @@ def test_update_changelog_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/2",
             ),
         ],
     )
@@ -349,6 +362,7 @@ def test_update_changelog_without_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
             ),
             PullRequest(
                 title="Another test",
@@ -357,6 +371,7 @@ def test_update_changelog_without_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/2",
             ),
         ],
         without_sections={"b"},
@@ -392,6 +407,7 @@ def test_update_changelog_only_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
             ),
             PullRequest(
                 title="Another test",
@@ -400,6 +416,7 @@ def test_update_changelog_only_sections(tmp_path):
                 author="author",
                 repo_name="repo",
                 repo_owner="owner",
+                url="https://github.com/owner/repo/pull/2",
             ),
         ],
         only_sections={"B"},
