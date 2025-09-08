@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import abc
+import copy
+from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable, Self, cast
@@ -257,9 +259,14 @@ class VersionSection(Section):
         without_sections: set[str],
         level: int = 2,
     ) -> Self:
-        # Initialize the sections dictionary to match the changelog sections config for
-        # ordering
-        sections = {section: [] for section in config.changelog_sections.values()}
+        section_labels = defaultdict(list, copy.deepcopy(config.section_labels))
+
+        # Backwards compatibility
+        for label, section in config.changelog_sections.items():
+            section_labels[section].append(label)
+
+        # Initialize the sections dictionary to match the config ordering
+        sections = {section: [] for section in section_labels.keys()}
 
         # If there are no sections, put all changes into "Changes", otherwise,
         # use `Other changes`
@@ -275,20 +282,22 @@ class VersionSection(Section):
         # De-duplicate pull requests and sort into sections
         for pull_request in sorted(set(pull_requests)):
             for label in pull_request.labels:
+                if label in config.changelog_ignore_labels:
+                    break
                 if label in without_sections:
                     break
             else:
                 # Iterate in-order of changelog sections to support user-configured precedence
-                for label, section in config.changelog_sections.items():
-                    if only_sections and label not in only_sections:
+                for section, labels in section_labels.items():
+                    if only_sections and section not in only_sections:
                         continue
-                    if label in pull_request.labels:
+                    if pull_request.labels.intersection(labels):
                         sections[section].append(pull_request)
                         break
                 else:
                     if not only_sections:
                         sections[
-                            config.changelog_sections.get("__unknown__", other_section)
+                            section_labels.get("__unknown__", other_section)
                         ].append(pull_request)
 
         children = []
