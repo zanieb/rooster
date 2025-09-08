@@ -330,7 +330,7 @@ def update_changelog(
     )
 
     # TODO(zanieb): Implement smart merging here
-    existing = changelog.get_version_section(version)
+    existing = changelog.get_version_section(config, version)
     if existing:
         typer.echo(f"Version {version} already exists in changelog, updating...")
 
