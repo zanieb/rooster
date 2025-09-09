@@ -190,11 +190,16 @@ def get_pull_requests_for_commits(
     )
 
     with cached_graphql_client() as client:
-        first_commit = commits[0]
         page_start = None
-
+        response_commits = None
         next_page = True
-        while next_page and seen_commits < len(commits):
+
+        # Find the first commit on the remote
+        response_commits = []
+        commit_index = 0
+        while not response_commits and commit_index < len(commits):
+            first_commit = commits[commit_index]
+            commit_index += 1
             response = _graphql(
                 client,
                 query,
@@ -205,12 +210,13 @@ def get_pull_requests_for_commits(
                     "after": page_start,
                 },
             )
+            response_commits = response["data"]["repository"]["commit"]
 
+        # Then paginate through the commits
+        while next_page and seen_commits < len(commits):
             response_commits = response["data"]["repository"]["commit"]
             if not response_commits:
-                # If this is empty, we can't paginate
-                next_page = False
-                continue
+                break
 
             response_commits = response_commits["history"]["nodes"]
             seen_commits += len(response_commits)
@@ -245,9 +251,21 @@ def get_pull_requests_for_commits(
                         )
                     )
 
+            # Get the next response
             page_info = response["data"]["repository"]["commit"]["history"]["pageInfo"]
             next_page = page_info["hasNextPage"]
             page_start = page_info["endCursor"]
+
+            response = _graphql(
+                client,
+                query,
+                variables={
+                    "owner": owner,
+                    "repo": repo_name,
+                    "commit": str(first_commit.id),
+                    "after": page_start,
+                },
+            )
 
     return pull_requests
 
