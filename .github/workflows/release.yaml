@@ -15,6 +15,7 @@ jobs:
   release:
     name: Release to PyPI
     runs-on: ubuntu-latest
+    environment: release
 
     steps:
       - uses: actions/checkout@v3
@@ -25,11 +26,7 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v6
 
-      # Note: If build and publish steps are ever separated, the version must
-      #       be set before building
       - name: Publish package
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           uv version "${GITHUB_REF#refs/*/}"
           uv build
