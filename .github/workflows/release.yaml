@@ -7,15 +7,16 @@ on:
       - "[0-9]+.[0-9]+rc[0-9]+"
       - "[0-9]+.[0-9]+[ab][0-9]+"
 
-permissions:
-  contents: write
-  pull-requests: write
+permissions: {}
 
 jobs:
   release:
     name: Release to PyPI
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      # For PyPI's trusted publishing.
+      id-token: write
 
     steps:
       - uses: actions/checkout@v3
