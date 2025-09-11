@@ -1,5 +1,5 @@
 [project]
-name = "rooster-blue"
+name = "rooster"
 version = "0.0.0"
 description = ""
 authors = [{name = "Zanie", email = "contact@zanie.dev"}]
