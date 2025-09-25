@@ -145,6 +145,8 @@ def get_pull_requests_for_commits(
     seen_commits = 0
     expected_commits = {str(commit.id) for commit in commits}
 
+    # Note we use `first: 10` on `history` because GitHub can otherwise
+    # encounter an internal timeout and return a 502
     query = textwrap.dedent(
         """
         query associatedPullRequest(
@@ -154,7 +156,7 @@ def get_pull_requests_for_commits(
                 commit: object(expression: $commit) {
                     ... on Commit {
                         id
-                        history(after: $after) {
+                        history(first: 10, after: $after) {
                             nodes {
                                 oid
                                 associatedPullRequests(first: 1) {
