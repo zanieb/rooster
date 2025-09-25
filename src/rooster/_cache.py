@@ -5,6 +5,8 @@ import hishel
 import httpx
 from httpcore import Request, Response
 
+from rooster._http import HttpClient
+
 
 class GraphQLCacheController(hishel.Controller):
     def is_cachable(self, request: Request, response: Response) -> bool:
@@ -33,7 +35,7 @@ def cached_graphql_client():
 
     The cache will be stored at `$PWD/.cache`.
     """
-    with httpx.Client(
+    with HttpClient(
         transport=hishel.CacheTransport(
             transport=httpx.HTTPTransport(),
             controller=GraphQLCacheController(
