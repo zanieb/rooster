@@ -25,12 +25,24 @@ class PullRequest:
     repo_name: str
     repo_owner: str
     url: str
+    body: str
 
     def __lt__(self, other):
         return self.number < other.number
 
     def with_title(self, title: str) -> Self:
         return dataclasses.replace(self, title=title)
+
+    def changelog_message(self) -> str | None:
+        """The changelog message is the PR title, unless there is a `Changelog:` line in the body."""
+        changelog_message = None
+        for line in self.body.splitlines():
+            changelog_prefix = "Changelog:"
+            if line.startswith(changelog_prefix):
+                # If there are multiple matching line, use the last one.
+                changelog_message = line.removeprefix(changelog_prefix).strip()
+
+        return changelog_message or self.title
 
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)
@@ -175,6 +187,7 @@ def get_pull_requests_for_commits(
                                                     }
                                                 }
                                             }
+                                            body
                                         }
                                     }
                                 }
@@ -250,6 +263,7 @@ def get_pull_requests_for_commits(
                             repo_name=repo_name,
                             repo_owner=owner,
                             url=pull_request["url"],
+                            body=pull_request["body"],
                         )
                     )
 

@@ -42,9 +42,7 @@ class Config(pydantic.BaseModel):
     changelog_ignore_labels: frozenset[str] = frozenset([])
     changelog_ignore_authors: frozenset[str] = frozenset(["dependabot"])
 
-    change_template: str = (
-        "- {pull_request.title} ([#{pull_request.number}]({pull_request.url}))"
-    )
+    change_template: str = "- {title} ([#{pull_request.number}]({pull_request.url}))"
     trim_title_prefixes: frozenset[str] = frozenset()
 
     # Paths to files to replace versions at

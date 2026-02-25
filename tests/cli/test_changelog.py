@@ -24,6 +24,7 @@ def test_update_changelog(tmp_path):
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/1",
+                body="",
             )
         ],
         release_date=date(2024, 9, 1),
@@ -59,6 +60,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/1",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -68,6 +70,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/2",
+                body="",
             ),
         ],
         release_date=date(2024, 9, 1),
@@ -103,6 +106,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/3",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -112,6 +116,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/4",
+                body="",
             ),
         ],
         release_date=date(2024, 9, 1),
@@ -159,6 +164,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/6",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -168,6 +174,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/7",
+                body="",
             ),
         ],
         release_date=date(2024, 9, 1),
@@ -228,6 +235,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/3",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -237,6 +245,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/4",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -246,6 +255,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/5",
+                body="",
             ),
         ],
         release_date=date(2024, 9, 1),
@@ -310,6 +320,7 @@ def test_update_changelog_sections(tmp_path):
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/1",
+                body="",
             )
         ],
         release_date=date(2024, 9, 1),
@@ -345,6 +356,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/1",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -354,6 +366,7 @@ Released on 2024-09-01.
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/2",
+                body="",
             ),
         ],
         release_date=date(2024, 9, 1),
@@ -395,6 +408,7 @@ def test_update_changelog_without_sections(tmp_path):
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/1",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -404,6 +418,7 @@ def test_update_changelog_without_sections(tmp_path):
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/2",
+                body="",
             ),
         ],
         without_sections={"b"},
@@ -443,6 +458,7 @@ def test_update_changelog_only_sections(tmp_path):
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/1",
+                body="",
             ),
             PullRequest(
                 title="Another test",
@@ -452,6 +468,7 @@ def test_update_changelog_only_sections(tmp_path):
                 repo_name="repo",
                 repo_owner="owner",
                 url="https://github.com/owner/repo/pull/2",
+                body="",
             ),
         ],
         only_sections={"B"},
@@ -467,6 +484,56 @@ Released on 2024-09-01.
 ### B
 
 - Another test ([#2](https://github.com/owner/repo/pull/2))
+
+### Contributors
+
+- [@author](https://github.com/author)
+
+
+""")
+
+
+def test_body_changelog_message(tmp_path):
+    changelog = tmp_path / "CHANGELOG.md"
+    update_changelog(
+        changelog,
+        Version("0.1.0"),
+        config=Config(),
+        pull_requests=[
+            PullRequest(
+                title="Test",
+                number=1,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
+                body="I noticed we're parsing the API JSON twice in `get_api_data()`, which I switched to parsing once, and resuing the result.\n\nChangelog: Speed up remote data parsing\n",
+            ),
+            PullRequest(
+                title="Another test",
+                number=2,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+                url="https://github.com/owner/repo/pull/2",
+                body="Add a test",
+            ),
+        ],
+        release_date=date(2024, 9, 1),
+    )
+    assert changelog.read_text() == snapshot("""\
+# Changelog
+
+## 0.1.0
+
+Released on 2024-09-01.
+
+### Changes
+
+- Another test ([#2](https://github.com/owner/repo/pull/2))
+- Speed up remote data parsing ([#1](https://github.com/owner/repo/pull/1))
 
 ### Contributors
 

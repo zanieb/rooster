@@ -398,7 +398,9 @@ class ChangesSection(ListSection):
 
         lines = []
         for pull_request in pull_requests:
-            line = config.change_template.format(pull_request=pull_request)
+            line = config.change_template.format(
+                pull_request=pull_request, title=pull_request.changelog_message()
+            )
             lines.append(line)
 
         return cls(
