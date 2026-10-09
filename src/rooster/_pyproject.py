@@ -2,9 +2,9 @@
 Utilities for interacting with `pyproject.toml` files.
 """
 
+import tomllib
 from pathlib import Path
 
-import tomllib
 from packaging.version import Version
 
 
@@ -12,8 +12,6 @@ class PyProjectError(Exception):
     """
     Error when reading a `pyproject.toml` file.
     """
-
-    pass
 
 
 def get_pyproject_version(path: Path) -> Version:

@@ -3,14 +3,14 @@ Utilities for testing Rooster internals.
 """
 
 import subprocess
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import pytest
 
 
 @pytest.fixture
-def git_directory(tmp_path: Path) -> Generator[Path, None, None]:
+def git_directory(tmp_path: Path) -> Generator[Path]:
     """
     An empty git project in a temporary directory.
 
@@ -25,7 +25,7 @@ def git_directory(tmp_path: Path) -> Generator[Path, None, None]:
     yield tmp_path
 
 
-def create_tags(directory: Path, tags: list[str]) -> Generator[str, None, None]:
+def create_tags(directory: Path, tags: list[str]) -> Generator[str]:
     """
     Create git tags in the given directory.
 
@@ -46,7 +46,7 @@ def empty_commit(directory: Path, message: str) -> None:
 
 
 @pytest.fixture
-def mock_pyproject(git_directory: Path) -> Generator[Path, None, None]:
+def mock_pyproject(git_directory: Path) -> Generator[Path]:
     """
     Creates a mock pyproject.toml file.
     """
@@ -62,9 +62,7 @@ def mock_pyproject(git_directory: Path) -> Generator[Path, None, None]:
 
 
 @pytest.fixture
-def mock_project(
-    git_directory: Path, mock_pyproject: Path
-) -> Generator[Path, None, None]:
+def mock_project(git_directory: Path, mock_pyproject: Path) -> Generator[Path]:
     """
     A basic mock project.
     """
@@ -94,8 +92,8 @@ def rooster_command(command: list[str], working_directory: Path | None = None) -
     process = subprocess.run(
         ["rooster"] + command,
         cwd=working_directory,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
+        check=False,
     )
     return {
         "exit_code": process.returncode,

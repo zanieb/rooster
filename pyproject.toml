@@ -15,11 +15,7 @@ classifiers = [
     "Natural Language :: English",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development",
     "Typing :: Typed",
@@ -40,18 +36,22 @@ rooster = "rooster:app"
 
 [dependency-groups]
 dev = [
-    "mypy>=0.971",
-    "ruff>=0.0.287",
+    "ty>=0.0.85",
+    "ruff>=0.17.0",
+    "prek>=0.5.5",
     "pytest>=7.4.2",
     "inline-snapshot>=0.23.0",
 ]
 
 [build-system]
-requires = ["uv_build>=0.6.16,<0.8"]
+requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "rooster"
+
+[tool.uv]
+required-version = ">=0.13.0"
 
 [tool.ruff.lint]
 extend-select = ["I"]

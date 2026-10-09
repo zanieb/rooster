@@ -3,15 +3,18 @@ from __future__ import annotations
 import abc
 import copy
 from collections import defaultdict
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
-from typing import Iterable, Self, cast
+from typing import Self, cast
 
 import marko
 import marko.ast_renderer
 import marko.inline
 import marko.md_renderer
+from marko.element import Element
+from packaging.version import InvalidVersion
 
 from rooster._config import Config
 from rooster._github import PullRequest
@@ -25,20 +28,25 @@ from rooster._versions import (
 VERSION_HEADING_PREFIX = "## "
 
 
-def new_heading(text: str, level: int = 1):
-    return marko.parse("#" * level + " " + text + "\n").children[0]
+def new_heading(text: str, level: int = 1) -> marko.block.Heading:
+    return cast(
+        marko.block.Heading, marko.parse("#" * level + " " + text + "\n").children[0]
+    )
 
 
 class Section(abc.ABC):
-    @abc.abstractclassmethod
-    def new(
-        cls, document: Document, element: marko.block.BlockElement, title: str
-    ) -> Self:
+    document: Document
+    element: marko.block.Heading
+    children: list[Element]
+
+    @classmethod
+    @abc.abstractmethod
+    def new(cls, document: Document, element: marko.block.Heading, title: str) -> Self:
         raise NotImplementedError
 
     @classmethod
     def from_elements(
-        cls, document: Document, elements: list[marko.block.BlockElement], level: int
+        cls, document: Document, elements: Iterable[Element], level: int
     ) -> list[Self]:
         renderer = document.renderer()
         sections = []
@@ -69,7 +77,7 @@ class Section(abc.ABC):
     def print(self):
         renderer = self.document.renderer()
         if not hasattr(self.element, "link_ref_defs"):
-            self.element.link_ref_defs = {}
+            self.element.__dict__.setdefault("link_ref_defs", {})
         print(renderer.render(self.element), end="")
         for child in self.children:
             if isinstance(child, marko.block.BlankLine):
@@ -77,7 +85,7 @@ class Section(abc.ABC):
             else:
                 # TODO: Report this as a bug upstream
                 if not hasattr(child, "link_ref_defs"):
-                    child.link_ref_defs = {}
+                    child.__dict__.setdefault("link_ref_defs", {})
                 print(renderer.render(child), end="")
 
 
@@ -109,11 +117,11 @@ class Document:
     def empty(cls) -> Self:
         return cls(document=marko.block.Document())
 
-    def add_child(self, child) -> None:
-        self.document.children.append(child)
+    def add_child(self, child: Element) -> None:
+        self.document.children = [*self.document.children, child]
 
-    def add_children(self, children) -> None:
-        self.document.children.extend(children)
+    def add_children(self, children: Iterable[Element]) -> None:
+        self.document.children = [*self.document.children, *children]
 
 
 @dataclass
@@ -153,19 +161,18 @@ class Changelog(Document):
             if remove:
                 remove.append(i)
 
-            if isinstance(element, marko.block.Heading):
-                if element.level == level:
-                    title = renderer.render(element.children[0])
+            if isinstance(element, marko.block.Heading) and element.level == level:
+                title = renderer.render(element.children[0])
 
-                    # We got to the next version heading
-                    if remove:
-                        # Don't remove the next version
-                        remove.pop()
-                        break
+                # We got to the next version heading
+                if remove:
+                    # Don't remove the next version
+                    remove.pop()
+                    break
 
-                    # Replace the existing version
-                    if title == section.version:
-                        remove = [i]
+                # Replace the existing version
+                if title == section.version:
+                    remove = [i]
         if remove:
             # As we remove each item, the index of the next item to remove will change
             for i, to_remove in enumerate(sorted(remove)):
@@ -175,7 +182,7 @@ class Changelog(Document):
             # Scan for an insertion position
             try:
                 compare_version = Version(section.version)
-            except Exception:
+            except InvalidVersion:
                 # We cannot compare in this case
                 compare_version = None
 
@@ -191,7 +198,7 @@ class Changelog(Document):
 
                 try:
                     version = Version(renderer.render(element.children[0]))
-                except Exception:
+                except InvalidVersion:
                     # We encountered an invalid version, stop here
                     break
 
@@ -200,7 +207,7 @@ class Changelog(Document):
                     break
 
         elements.insert(i, section.element)
-        elements.insert(i + 1, marko.block.BlankLine)
+        elements.insert(i + 1, marko.block.BlankLine(0))
 
         # Insert all the version components
         offset = 0
@@ -208,15 +215,15 @@ class Changelog(Document):
             elements.insert(i + 2 + offset, child)
 
         if not section.children:
-            elements.insert(i + 2, marko.block.BlankLine)
+            elements.insert(i + 2, marko.block.BlankLine(0))
             elements.insert(i + 2, marko.block.HTMLBlock("<!-- No changes -->"))
 
     @classmethod
     def new(cls) -> Self:
         new = cls.empty()
         new.add_child(new_heading("Changelog"))
-        new.add_child(marko.block.BlankLine)
-        new.add_child(marko.block.BlankLine)
+        new.add_child(marko.block.BlankLine(0))
+        new.add_child(marko.block.BlankLine(0))
         return new
 
 
@@ -226,12 +233,10 @@ class VersionSection(Section):
     element: marko.block.Heading
     title: str
     version: str
-    children: list[marko.parser.element.Element] = field(default_factory=list)
+    children: list[Element] = field(default_factory=list)
 
     @classmethod
-    def new(
-        cls, document: Document, element: marko.block.BlockElement, title: str
-    ) -> Self:
+    def new(cls, document: Document, element: marko.block.Heading, title: str) -> Self:
         return cls(document, element, title, version=title)
 
     def sections(self):
@@ -256,8 +261,8 @@ class VersionSection(Section):
         config: Config,
         version: Version,
         pull_requests: Iterable[PullRequest],
-        only_sections: set[str],
-        without_sections: set[str],
+        only_sections: Collection[str],
+        without_sections: Collection[str],
         level: int = 2,
         release_date: date | None = None,
     ) -> Self:
@@ -268,11 +273,21 @@ class VersionSection(Section):
             section_labels[section].append(label)
 
         # Initialize the sections dictionary to match the config ordering
-        sections = {section: [] for section in section_labels.keys()}
+        sections: dict[str, list[PullRequest]] = {
+            section: [] for section in section_labels
+        }
 
         # If there are no sections, put all changes into "Changes", otherwise,
         # use `Other changes`
         other_section = "Other changes" if sections else "Changes"
+        other_section = next(
+            (
+                section
+                for section, labels in section_labels.items()
+                if "__unknown__" in labels
+            ),
+            other_section,
+        )
         sections[other_section] = []
 
         authors = {
@@ -298,40 +313,40 @@ class VersionSection(Section):
                         break
                 else:
                     if not only_sections:
-                        sections[
-                            section_labels.get("__unknown__", other_section)
-                        ].append(pull_request)
+                        sections[other_section].append(pull_request)
 
         children = []
-        for section, pull_requests in sections.items():
+        for section, section_pull_requests in sections.items():
             # Omit empty sections
-            if not pull_requests:
+            if not section_pull_requests:
                 continue
 
-            pull_requests = sorted(pull_requests, key=lambda pr: pr.title)
+            section_pull_requests = sorted(
+                section_pull_requests, key=lambda pr: pr.title
+            )
 
             changes_section = ChangesSection.from_pull_requests(
                 document=document,
                 config=config,
                 section=section,
-                pull_requests=pull_requests,
+                pull_requests=section_pull_requests,
             )
             children.append(changes_section.element)
             children.extend(changes_section.children)
 
         if config.changelog_contributors and authors:
-            section = ContributorsSection.from_authors(
+            contributors = ContributorsSection.from_authors(
                 document=document, authors=authors
             )
-            children.append(section.element)
-            children.extend(section.children)
+            children.append(contributors.element)
+            children.extend(contributors.children)
 
-        version = (
+        version_str = (
             to_cargo_version(version)
             if config.version_format == "cargo"
             else str(version)
         )
-        heading_element = new_heading(version, level=level)
+        heading_element = new_heading(version_str, level=level)
 
         # Add release date paragraph
         if release_date is None:
@@ -341,20 +356,20 @@ class VersionSection(Section):
         release_date_paragraph = marko.parse(release_date_text + "\n").children[0]
 
         # Insert release date at the beginning of children
-        all_children = [release_date_paragraph, marko.block.BlankLine] + children
+        all_children = [release_date_paragraph, marko.block.BlankLine(0)] + children
 
         return cls(
             document=document,
             element=heading_element,
-            title=version,
-            version=version,
+            title=version_str,
+            version=version_str,
             children=all_children,
         )
 
     def as_document(self) -> Document:
         document = Document.empty()
         document.add_child(self.element)
-        document.add_child(marko.block.BlankLine)
+        document.add_child(marko.block.BlankLine(0))
         document.add_children(self.children)
         return document
 
@@ -364,21 +379,20 @@ class ListSection(Section):
     document: Document
     element: marko.block.Heading
     title: str
-    children: list[marko.parser.element.Element] = field(default_factory=list)
+    children: list[Element] = field(default_factory=list)
 
     @classmethod
-    def new(
-        cls, document: Document, element: marko.block.BlockElement, title: str
-    ) -> Self:
+    def new(cls, document: Document, element: marko.block.Heading, title: str) -> Self:
         return cls(document, element, title)
 
     def entries(self):
-        """ """
         entries = []
         for element in self.children:
             if isinstance(element, marko.block.List):
                 for item in element.children:
-                    entries.append(Entry(self.document, item))
+                    entries.append(
+                        Entry(self.document, cast(marko.block.ListItem, item))
+                    )
 
         return entries
 
@@ -406,9 +420,9 @@ class ChangesSection(ListSection):
             element=heading,
             title=section,
             children=(
-                [marko.block.BlankLine]
-                + marko.parse("\n".join(lines)).children
-                + [marko.block.BlankLine]
+                [marko.block.BlankLine(0)]
+                + list(marko.parse("\n".join(lines)).children)
+                + [marko.block.BlankLine(0)]
             ),
         )
 
@@ -419,7 +433,7 @@ class ContributorsSection(ListSection):
     def from_authors(
         cls,
         document: Document,
-        authors: Iterable[PullRequest],
+        authors: Iterable[str],
         level: int = 3,
     ) -> Self:
         heading = new_heading("Contributors", level)
@@ -434,9 +448,9 @@ class ContributorsSection(ListSection):
             element=heading,
             title="Contributors",
             children=(
-                [marko.block.BlankLine]
-                + marko.parse("\n".join(lines)).children
-                + [marko.block.BlankLine]
+                [marko.block.BlankLine(0)]
+                + list(marko.parse("\n".join(lines)).children)
+                + [marko.block.BlankLine(0)]
             ),
         )
 
@@ -464,14 +478,12 @@ def get_versions_from_changelog(config: Config, changelog: str) -> list[Version]
     Get all versions from headings from the changelog
     """
 
-    return filter(
-        lambda x: x is not None,
-        [
-            parse_version(config, line[2:].strip())
-            for line in changelog.splitlines()
-            if line.startswith(VERSION_HEADING_PREFIX)
-        ],
-    )
+    return [
+        version
+        for line in changelog.splitlines()
+        if line.startswith(VERSION_HEADING_PREFIX)
+        if (version := parse_version(config, line[2:].strip())) is not None
+    ]
 
 
 def extract_entry(config: Config, changelog: str, version: Version) -> str | None:
