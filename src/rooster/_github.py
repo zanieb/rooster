@@ -377,7 +377,7 @@ def get_pull_request_by_number(
     client: httpx.Client, owner: str, repo_name: str, number: int, subject: str
 ) -> PullRequest | None:
     """
-    Retrieve a merged pull request whose merge commit matches the subject.
+    Retrieve a merged pull request whose merge commit or title matches the subject.
     """
     query = textwrap.dedent(
         """
@@ -426,6 +426,13 @@ def get_pull_request_by_number(
     if not pull_request or not pull_request["merged"]:
         return None
     merge_commit = pull_request["mergeCommit"]
-    if not merge_commit or merge_commit["message"].partition("\n")[0] != subject:
+    # GitHub may not resolve the merge commit of an older merged PR. Its title
+    # still provides a check against references to unrelated pull requests.
+    expected_subject = (
+        merge_commit["message"].partition("\n")[0]
+        if merge_commit
+        else f"{pull_request['title']} (#{number})"
+    )
+    if expected_subject != subject:
         return None
     return _pull_request_from_node(pull_request, owner, repo_name)

@@ -82,12 +82,36 @@ def test_unresolved_reference_retains_association(github_api, capsys, reason):
             candidate["mergeCommit"]["message"] = "Unrelated work (#1)"
         else:
             candidate["mergeCommit"] = None
+            candidate["title"] = "Unrelated work"
     commit = github_api.commit("Change 1 (#1)", associated)
 
     result = get_pull_requests_for_commits("owner", "repo", [commit])
 
     assert [pr.number for pr in result] == [10]
     assert f"could not match commit {commit.id}" in capsys.readouterr().err
+
+
+def test_old_merged_pr_without_merge_commit_uses_matching_title(github_api):
+    associated = github_api.pull_request(10)
+    original = github_api.pull_request(1, labels=("breaking",))
+    original["mergeCommit"] = None
+    commit = github_api.commit("Change 1 (#1)", associated)
+
+    result = get_pull_requests_for_commits("owner", "repo", [commit])
+
+    assert [pr.number for pr in result] == [1]
+    assert result[0].labels == {"breaking"}
+
+
+def test_available_merge_commit_takes_precedence_over_current_title(github_api):
+    associated = github_api.pull_request(10)
+    original = github_api.pull_request(1)
+    original["title"] = "Edited title"
+    commit = github_api.commit("Change 1 (#1)", associated)
+
+    result = get_pull_requests_for_commits("owner", "repo", [commit])
+
+    assert [pr.number for pr in result] == [1]
 
 
 @pytest.mark.parametrize("found", [True, False])

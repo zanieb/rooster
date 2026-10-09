@@ -21,8 +21,10 @@ rooster release [<path>] [--bump major|minor|patch]
 GitHub can associate rebased commits with the pull request that integrated a
 release branch instead of their original pull requests. Rooster uses the
 `(#123)` suffix in a commit's subject to recover the original merged pull
-request when its merge-commit subject matches. This also works when GitHub
-returns no associated pull request. No special labels are required.
+request when its merge-commit subject matches. If GitHub no longer supplies the
+merge commit, the pull request's title and number must match instead. This also
+works when GitHub returns no associated pull request. No special labels are
+required.
 
 The recovered pull request supplies the changelog entry and version-bump labels;
 normal label filtering still applies. References elsewhere in the commit message
