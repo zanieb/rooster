@@ -13,7 +13,6 @@ import httpx
 
 from rooster._cache import cached_graphql_client
 
-TOKEN_REGEX = re.compile(r"Token:\s(.*)")
 NUMBER_REGEX = re.compile(r"\(#([1-9][0-9]*)\)\s*$")
 
 
@@ -58,44 +57,25 @@ class GitHubGraphQLError(RuntimeError):
 @functools.cache
 def get_github_token() -> str:
     """
-    Retrieve the current GitHub token from the `gh` CLI or `GITHUB_TOKEN` environment variable.
+    Retrieve the current GitHub token from the environment or the `gh` CLI.
 
     This function is cached and should only run once invocation of `rooster`.
     """
     if "GITHUB_TOKEN" in os.environ:
         return os.environ["GITHUB_TOKEN"]
+    if "GH_TOKEN" in os.environ:
+        return os.environ["GH_TOKEN"]
 
     if not shutil.which("gh"):
-        print(
-            "You must provide a GitHub access token via GITHUB_TOKEN or have the gh CLI"
-            " installed."
-        )
-        raise RuntimeError("Failed to retrieve GitHub token")
+        raise RuntimeError("Provide GITHUB_TOKEN or GH_TOKEN, or install the gh CLI")
 
-    gh_auth_status = subprocess.run(
-        ["gh", "auth", "status", "--show-token"], capture_output=True, check=False
-    )
-    output = gh_auth_status.stdout.decode()
-    if gh_auth_status.returncode != 0:
-        print(
-            "Failed to retrieve authentication status from GitHub CLI:", file=sys.stderr
-        )
-        print(output, file=sys.stderr)
-        raise RuntimeError("Failed to retrieve GitHub token")
-
-    match = TOKEN_REGEX.search(output)
-    if not match:
-        print(
-            (
-                "Failed to find token in GitHub CLI output with regex"
-                f" {TOKEN_REGEX.pattern!r}:"
-            ),
-            file=sys.stderr,
-        )
-        print(output, file=sys.stderr)
-        raise RuntimeError("Failed to retrieve GitHub token")
-
-    return match.groups()[0]
+    result = subprocess.run(["gh", "auth", "token"], capture_output=True, check=False)
+    if result.returncode != 0:
+        raise RuntimeError("Failed to retrieve a GitHub token using gh auth token")
+    token = result.stdout.decode().strip()
+    if not token:
+        raise RuntimeError("The gh CLI returned an empty GitHub token")
+    return token
 
 
 def _graphql(client: httpx.Client, query: str, variables: dict[str, object]):
