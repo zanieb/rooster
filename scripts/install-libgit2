@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mkdir -p "${1:?Usage: install-libgit2 PREFIX}"
+prefix="$(cd "$1" && pwd)"
+commit=49e408b3208bc3093757a1c2db938d3590f3f412 # libgit2 1.9.7
+archive="$prefix/libgit2.tar.gz"
+source_dir="$prefix/source"
+build_dir="$prefix/build"
+
+curl --fail --location --retry 3 \
+    "https://github.com/libgit2/libgit2/archive/$commit.tar.gz" \
+    --output "$archive"
+printf '%s  %s\n' \
+    173c45822177d73bb1a97555d864ad04a3e0486eb0bc3455443a4669a35d8aa2 \
+    "$archive" | sha256sum --check
+mkdir -p "$source_dir"
+tar -xzf "$archive" --strip-components=1 -C "$source_dir"
+
+# Rooster reads local repositories; its GitHub requests use `httpx`.
+cmake -S "$source_dir" -B "$build_dir" \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$prefix" \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DBUILD_TESTS=OFF \
+    -DBUILD_CLI=OFF \
+    -DUSE_SSH=OFF \
+    -DUSE_HTTPS=OFF
+cmake --build "$build_dir" --parallel 2
+cmake --install "$build_dir"
+
+if [[ -n "${GITHUB_ENV:-}" ]]; then
+    printf '%s\n' \
+        "LIBGIT2=$prefix" \
+        "LD_LIBRARY_PATH=$prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+        >> "$GITHUB_ENV"
+fi
