@@ -38,7 +38,7 @@ rooster = "rooster:app"
 dev = [
     "ty>=0.0.85",
     "ruff>=0.17.0",
-    "prek>=0.5.4",
+    "prek>=0.5.5",
     "pytest>=7.4.2",
     "inline-snapshot>=0.23.0",
 ]
