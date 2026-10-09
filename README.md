@@ -38,3 +38,18 @@ by an ignored label.
 ### Caching
 
 Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may disable this behavior with `ROOSTER_NO_CACHE=1`.
+
+## Development
+
+Install [uv](https://docs.astral.sh/uv/) 0.13 or later and sync the locked dependencies:
+
+```sh
+uv sync --locked
+```
+
+Run the Ruff and ty checks through prek, then run the tests:
+
+```sh
+uv run --locked prek run --all-files
+uv run --locked pytest tests
+```

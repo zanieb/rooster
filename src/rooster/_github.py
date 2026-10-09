@@ -6,15 +6,20 @@ import shutil
 import subprocess
 import sys
 import textwrap
-from typing import Self
+from collections.abc import Sequence
+from typing import Protocol, Self
 
 import httpx
 
 from rooster._cache import cached_graphql_client
-from rooster._git import git
 
 TOKEN_REGEX = re.compile(r"Token:\s(.*)")
 NUMBER_REGEX = re.compile(r"\(#([1-9][0-9]*)\)\s*$")
+
+
+class Commit(Protocol):
+    @property
+    def id(self) -> object: ...
 
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)
@@ -68,10 +73,10 @@ def get_github_token() -> str:
         raise RuntimeError("Failed to retrieve GitHub token")
 
     gh_auth_status = subprocess.run(
-        ["gh", "auth", "status", "--show-token"], capture_output=True
+        ["gh", "auth", "status", "--show-token"], capture_output=True, check=False
     )
     output = gh_auth_status.stdout.decode()
-    if not gh_auth_status.returncode == 0:
+    if gh_auth_status.returncode != 0:
         print(
             "Failed to retrieve authentication status from GitHub CLI:", file=sys.stderr
         )
@@ -128,13 +133,12 @@ def parse_remote_url(remote_url: str) -> tuple[str, str]:
         parts = remote_url.split("/")
         owner = parts[-2]
         repo = parts[-1]
-    if repo.endswith(".git"):
-        repo = repo[:-4]
+    repo = repo.removesuffix(".git")
     return owner, repo
 
 
 def get_pull_requests_for_commits(
-    owner, repo_name, commits: list[git.Commit]
+    owner, repo_name, commits: Sequence[Commit]
 ) -> list[PullRequest]:
     """
     Retrieve the corresponding pull requests for a list of commits.
@@ -370,7 +374,6 @@ def update_release_notes(
         json=request,
     )
     response.raise_for_status()
-    return
 
 
 def get_pull_request_by_number(
