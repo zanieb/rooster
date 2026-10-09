@@ -33,8 +33,9 @@ jobs:
           fetch-depth: 0
 
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
+          version: "0.13.0"
           enable-cache: false
 
       - name: Publish to Test PyPI
@@ -60,12 +61,14 @@ jobs:
 
     steps:
       - name: Install the latest version of uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4 # v10.1.0
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.13.0"
 
       - name: Wait for package to be available
         run: >
           until
-          curl --silent "https://test.pypi.org/simple/rooster-blue/"
+          curl --silent "https://test.pypi.org/simple/rooster/"
           | grep --fixed-strings --quiet -- "$BUILD_VERSION";
           do sleep 10;
           done
@@ -79,11 +82,11 @@ jobs:
       - name: Install release from Test PyPI
         run: |
           uv venv -p 3.14
-          uv pip install --index-strategy unsafe-best-match --refresh-package rooster-blue --extra-index-url https://test.pypi.org/simple/ "rooster-blue==$BUILD_VERSION"
+          uv pip install --index-strategy unsafe-best-match --refresh-package rooster --extra-index-url https://test.pypi.org/simple/ "rooster==$BUILD_VERSION"
 
       - name: Check release version
         run: |
-          installed=$(uv run python -c "from importlib.metadata import version; print(version('rooster-blue'))")
+          installed=$(uv run python -c "from importlib.metadata import version; print(version('rooster'))")
           test "$installed" = "$BUILD_VERSION"
 
       - name: Check CLI help
