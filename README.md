@@ -41,6 +41,16 @@ Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may d
 
 ## Development
 
+Rooster requires Python 3.15. Until Python 3.15 wheels are available for all
+dependencies, installation also requires a C compiler, Rust, and `libgit2` 1.9.
+On Linux, the CI helper can build `libgit2` into a local prefix:
+
+```sh
+bash scripts/install-libgit2 .deps/libgit2
+export LIBGIT2="$PWD/.deps/libgit2"
+export LD_LIBRARY_PATH="$LIBGIT2/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+```
+
 Install [uv](https://docs.astral.sh/uv/) 0.13 or later and sync the locked dependencies:
 
 ```sh

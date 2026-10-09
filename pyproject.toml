@@ -1,7 +1,7 @@
 [project]
 name = "rooster"
 version = "0.0.0"
-requires-python = ">=3.14"
+requires-python = ">=3.15"
 description = ""
 authors = [{name = "Zanie", email = "contact@zanie.dev"}]
 readme = "README.md"
@@ -15,7 +15,7 @@ classifiers = [
     "Natural Language :: English",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
     "Topic :: Software Development :: Libraries",
     "Topic :: Software Development",
     "Typing :: Typed",
@@ -23,11 +23,11 @@ classifiers = [
 dependencies = [
     "typer>=0.15.0",
     "packaging>=23.1",
-    "pygit2>=1.13.1",
+    "pygit2>=1.20.1",
     "httpx>=0.25.0",
     "tqdm>=4.66.1",
     "hishel>=0.0.24,<1.0.0",
-    "pydantic>=2.4.2",
+    "pydantic>=2.13.5",
     "marko>=2.0.2",
 ]
 

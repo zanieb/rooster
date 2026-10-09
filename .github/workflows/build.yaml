@@ -49,21 +49,29 @@ jobs:
           uv build
           uv publish --publish-url https://test.pypi.org/legacy/
 
+  # Use a separate environment so installation exercises the published package.
   test-install:
-    # We test the install on a clean machine to avoid poetry behavior attempting to
-    # install the project root when it is checked out
     name: Test install
     runs-on: ubuntu-latest
     needs: build-and-publish
-    timeout-minutes: 5
+    timeout-minutes: 10
+    permissions:
+      contents: read
     env:
       BUILD_VERSION: ${{ needs.build-and-publish.outputs.build-version }}
 
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: "0.13.0"
+
+      - name: Install libgit2 for Python 3.15 source builds
+        run: bash scripts/install-libgit2 "$RUNNER_TEMP/libgit2"
 
       - name: Wait for package to be available
         run: >
@@ -81,14 +89,14 @@ jobs:
 
       - name: Install release from Test PyPI
         run: |
-          uv venv -p 3.14
-          uv pip install --index-strategy unsafe-best-match --refresh-package rooster --extra-index-url https://test.pypi.org/simple/ "rooster==$BUILD_VERSION"
+          uv venv -p 3.15 "$RUNNER_TEMP/rooster-install"
+          uv pip install --python "$RUNNER_TEMP/rooster-install/bin/python" --index-strategy unsafe-best-match --refresh-package rooster --extra-index-url https://test.pypi.org/simple/ "rooster==$BUILD_VERSION"
 
       - name: Check release version
         run: |
-          installed=$(uv run python -c "from importlib.metadata import version; print(version('rooster'))")
+          installed=$("$RUNNER_TEMP/rooster-install/bin/python" -c "from importlib.metadata import version; print(version('rooster'))")
           test "$installed" = "$BUILD_VERSION"
 
       - name: Check CLI help
         run: |
-          uv run -- rooster --help
+          "$RUNNER_TEMP/rooster-install/bin/rooster" --help

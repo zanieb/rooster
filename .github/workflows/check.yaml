@@ -13,7 +13,7 @@ permissions:
 jobs:
   run-checks:
     name: ${{ matrix.os }}
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     strategy:
       matrix:
@@ -30,6 +30,9 @@ jobs:
         uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           version: "0.13.0"
+
+      - name: Install libgit2 for Python 3.15 source builds
+        run: bash scripts/install-libgit2 "$RUNNER_TEMP/libgit2"
 
       - name: Run Python checks
         run: uv run --locked prek run --all-files
