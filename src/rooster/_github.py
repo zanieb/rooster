@@ -14,6 +14,7 @@ from rooster._cache import cached_graphql_client
 from rooster._git import git
 
 TOKEN_REGEX = re.compile(r"Token:\s(.*)")
+NUMBER_REGEX = re.compile(r"\(#([1-9][0-9]*)\)\s*$")
 
 
 @dataclasses.dataclass(frozen=True, unsafe_hash=True)
@@ -41,6 +42,12 @@ class Release:
     body: str
     draft: bool
     prerelease: bool
+
+
+class GitHubGraphQLError(RuntimeError):
+    def __init__(self, errors: list[dict]):
+        self.errors = errors
+        super().__init__(f"GraphQL server responded with error: {errors}")
 
 
 @functools.cache
@@ -104,8 +111,8 @@ def _graphql(client: httpx.Client, query: str, variables: dict[str, object]):
         .raise_for_status()
         .json()
     )
-    if response.get("errors"):
-        raise RuntimeError(f"GraphQL server responded with error: {response['errors']}")
+    if errors := response.get("errors"):
+        raise GitHubGraphQLError(errors)
     return response
 
 
@@ -142,6 +149,9 @@ def get_pull_requests_for_commits(
         return []
 
     pull_requests = []
+    referenced_pull_requests: dict[tuple[int, str], PullRequest | None] = {}
+    expanded_pull_requests: set[int] = set()
+    unresolved_commits: list[tuple[str, PullRequest]] = []
     seen_commits = 0
     expected_commits = {str(commit.id) for commit in commits}
 
@@ -159,6 +169,7 @@ def get_pull_requests_for_commits(
                         history(first: 10, after: $after) {
                             nodes {
                                 oid
+                                message
                                 associatedPullRequests(first: 1) {
                                     edges {
                                         node {
@@ -168,7 +179,7 @@ def get_pull_requests_for_commits(
                                             author {
                                                 login
                                             }
-                                            labels(first: 10) {
+                                            labels(first: 100) {
                                                 edges {
                                                     node {
                                                         name
@@ -226,37 +237,60 @@ def get_pull_requests_for_commits(
                 if commit["oid"] not in expected_commits:
                     continue
 
-                associated_pull_requests = commit["associatedPullRequests"]["edges"]
-                if not associated_pull_requests:
-                    # TODO: Commits without pull requests should probably be included in
-                    #       the changelog with a link to the commit and the commit
-                    #       message with an opt-in
-                    continue
+                associated = next(
+                    (
+                        item["node"]
+                        for item in commit["associatedPullRequests"]["edges"]
+                        if item["node"]
+                    ),
+                    None,
+                )
+                pull_request = (
+                    _pull_request_from_node(associated, owner, repo_name)
+                    if associated
+                    else None
+                )
 
-                for item in associated_pull_requests:
-                    pull_request = item["node"]
-                    if not pull_request:
+                # A rebase can associate a squash commit with the PR that
+                # integrated its branch. The subject still identifies the
+                # original PR; references in the body may describe other work.
+                subject = commit["message"].partition("\n")[0]
+                match = NUMBER_REGEX.search(subject)
+                if match:
+                    number = int(match[1])
+                    if pull_request and pull_request.number == number:
+                        pull_requests.append(pull_request)
                         continue
-                    labels = {
-                        edge["node"]["name"] for edge in pull_request["labels"]["edges"]
-                    }
-
-                    pull_requests.append(
-                        PullRequest(
-                            title=pull_request["title"],
-                            number=pull_request["number"],
-                            labels=frozenset(labels),
-                            author=pull_request["author"]["login"],
-                            repo_name=repo_name,
-                            repo_owner=owner,
-                            url=pull_request["url"],
+                    reference = (number, subject)
+                    if reference not in referenced_pull_requests:
+                        referenced_pull_requests[reference] = (
+                            get_pull_request_by_number(
+                                client, owner, repo_name, number, subject
+                            )
                         )
+                    original = referenced_pull_requests[reference]
+                    if original:
+                        pull_requests.append(original)
+                        if pull_request:
+                            expanded_pull_requests.add(pull_request.number)
+                        continue
+                    print(
+                        f"Warning: could not match commit {commit['oid']} to merged "
+                        f"pull request #{number} in {owner}/{repo_name}.",
+                        file=sys.stderr,
                     )
+
+                if pull_request:
+                    pull_requests.append(pull_request)
+                    if not match:
+                        unresolved_commits.append((commit["oid"], pull_request))
 
             # Get the next response
             page_info = response["data"]["repository"]["commit"]["history"]["pageInfo"]
             next_page = page_info["hasNextPage"]
             page_start = page_info["endCursor"]
+            if not next_page or seen_commits >= len(commits):
+                break
 
             response = _graphql(
                 client,
@@ -269,7 +303,28 @@ def get_pull_requests_for_commits(
                 },
             )
 
+    for commit_id, pull_request in unresolved_commits:
+        if pull_request.number in expanded_pull_requests:
+            print(
+                f"Warning: could not identify the original pull request for "
+                f"commit {commit_id}; using {pull_request.url}. "
+                "Check this commit when reviewing the changelog.",
+                file=sys.stderr,
+            )
+
     return pull_requests
+
+
+def _pull_request_from_node(node: dict, owner: str, repo_name: str) -> PullRequest:
+    return PullRequest(
+        title=node["title"],
+        number=node["number"],
+        labels=frozenset(edge["node"]["name"] for edge in node["labels"]["edges"]),
+        author=node["author"]["login"] if node["author"] else "ghost",
+        repo_name=repo_name,
+        repo_owner=owner,
+        url=node["url"],
+    )
 
 
 def get_release(repo_org: str, repo_name: str, tag_name: str) -> Release | None:
@@ -316,3 +371,68 @@ def update_release_notes(
     )
     response.raise_for_status()
     return
+
+
+def get_pull_request_by_number(
+    client: httpx.Client, owner: str, repo_name: str, number: int, subject: str
+) -> PullRequest | None:
+    """
+    Retrieve a merged pull request whose merge commit or title matches the subject.
+    """
+    query = textwrap.dedent(
+        """
+        query pullRequestByNumber($repo: String!, $owner: String!, $number: Int!) {
+            repository(name: $repo, owner: $owner) {
+                pullRequest(number: $number) {
+                    title
+                    number
+                    url
+                    merged
+                    mergeCommit {
+                        message
+                    }
+                    author {
+                        login
+                    }
+                    labels(first: 100) {
+                        edges {
+                            node {
+                                name
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        """
+    )
+
+    try:
+        response = _graphql(
+            client,
+            query,
+            variables={"owner": owner, "repo": repo_name, "number": number},
+        )
+    except GitHubGraphQLError as exc:
+        if all(
+            error.get("type") == "NOT_FOUND"
+            and error.get("path") == ["repository", "pullRequest"]
+            for error in exc.errors
+        ):
+            return None
+        raise
+
+    pull_request = response["data"]["repository"]["pullRequest"]
+    if not pull_request or not pull_request["merged"]:
+        return None
+    merge_commit = pull_request["mergeCommit"]
+    # GitHub may not resolve the merge commit of an older merged PR. Its title
+    # still provides a check against references to unrelated pull requests.
+    expected_subject = (
+        merge_commit["message"].partition("\n")[0]
+        if merge_commit
+        else f"{pull_request['title']} (#{number})"
+    )
+    if expected_subject != subject:
+        return None
+    return _pull_request_from_node(pull_request, owner, repo_name)
