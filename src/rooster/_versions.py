@@ -11,7 +11,7 @@ import pygit2 as git
 from packaging.version import InvalidVersion, Version
 
 from rooster._config import BumpType, Config, VersionFile
-from rooster._git import get_tags
+from rooster._git import get_commit_for_tag, get_latest_commit, get_tags
 
 CARGO_PRE_MAP = {"a": "alpha", "b": "beta", "rc": "rc"}
 CARGO_PRE_MAP_REVERSE = {v: k for k, v in CARGO_PRE_MAP.items()}
@@ -21,15 +21,22 @@ def versions_from_git_tags(
     config: Config, repo: git.repository.Repository
 ) -> dict[Version, str]:
     """
-    Get versions of the project from git tags.
+    Get versions of the project from git tags reachable from HEAD.
 
     Returns a mapping of version to tag.
     """
     tags = get_tags(config, repo)
-    return {
+    versions = {
         version: config.version_tag_prefix + tag
         for tag in tags
         if (version := parse_version(config, tag)) is not None
+    }
+    head = get_latest_commit(repo)
+    return {
+        version: tag
+        for version, tag in versions.items()
+        if (commit := get_commit_for_tag(repo, tag)).id == head.id
+        or repo.descendant_of(head.id, commit.id)
     }
 
 

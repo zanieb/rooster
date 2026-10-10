@@ -36,6 +36,22 @@ def test_latest_version_accepts_iterators():
     assert get_latest_version(iter([])) is None
 
 
+def test_version_tags_ignore_releases_on_other_branches(git_directory):
+    commit(git_directory, "Shared release")
+    git(git_directory, "tag", "1.0.0")
+    git(git_directory, "switch", "-c", "next")
+    commit(git_directory, "Future release")
+    git(git_directory, "tag", "2.0.0")
+    git(git_directory, "switch", "main")
+    commit(git_directory, "Maintenance release")
+    git(git_directory, "tag", "1.0.1")
+
+    assert versions_from_git_tags(Config(), repo_from_path(git_directory)) == {
+        Version("1.0.0"): "1.0.0",
+        Version("1.0.1"): "1.0.1",
+    }
+
+
 def test_changelog_versions_can_be_traversed_repeatedly():
     versions = get_versions_from_changelog(
         Config(), "## 2.0.0\n## unreleased\n## 1.0.0\n"
