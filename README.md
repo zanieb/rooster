@@ -16,6 +16,12 @@ Prepares a new release, which:
 rooster release [<path>] [--bump major|minor|patch]
 ```
 
+Use `--only-sections <name>` or `--without-sections <name>` to filter generated
+changelog sections. Repeat either option for multiple sections. Changes are
+assigned to the first matching configured section before filtering; the fallback
+section can also be selected. `--without-sections` also accepts label names for
+compatibility.
+
 ### Rebased pull requests
 
 GitHub can associate rebased commits with the pull request that integrated a
