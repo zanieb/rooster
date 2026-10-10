@@ -1,7 +1,45 @@
 import subprocess
 
+import pytest
+
 from rooster._cli import release
 from rooster._testing import empty_commit, git_directory
+
+
+def project_with_change(directory, github_api, *, labels=(), config=""):
+    (directory / "pyproject.toml").write_text(
+        '[project]\nname = "example"\nversion = "1.2.3"\n' + config
+    )
+    subprocess.check_call(
+        ["git", "remote", "add", "origin", "https://github.com/owner/repo"],
+        cwd=directory,
+    )
+    empty_commit(directory, "Released")
+    subprocess.check_call(["git", "tag", "1.2.3"], cwd=directory)
+    empty_commit(directory, "Change 1 (#1)")
+    head = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=directory, text=True
+    ).strip()
+    github_api.commit(
+        "Change 1 (#1)", github_api.pull_request(1, labels=labels), oid=head
+    )
+
+
+@pytest.mark.parametrize(
+    ("labels", "expected"),
+    [
+        (("breaking", "feature"), "2.0.0"),
+        (("breaking",), "2.0.0"),
+        (("feature",), "1.3.0"),
+        (("fix",), "1.2.4"),
+    ],
+)
+def test_largest_label_bump_wins(git_directory, github_api, labels, expected, capsys):
+    project_with_change(git_directory, github_api, labels=labels)
+
+    release(directory=git_directory, update_version_files=False)
+
+    assert f"Using new version {expected}" in capsys.readouterr().out
 
 
 def test_first_release_includes_the_root_commit(git_directory, github_api, capsys):

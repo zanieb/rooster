@@ -240,11 +240,12 @@ def release(
                     bump_type = BumpType.major
                     break
 
-            for label in config.minor_labels:
-                if label in labels:
-                    typer.echo(f"Detected minor version change due label {label}")
-                    bump_type = BumpType.minor
-                    break
+            else:
+                for label in config.minor_labels:
+                    if label in labels:
+                        typer.echo(f"Detected minor version change due label {label}")
+                        bump_type = BumpType.minor
+                        break
 
             if bump_type == BumpType.patch:
                 typer.echo(
