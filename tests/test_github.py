@@ -2,7 +2,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from rooster._github import GitHubGraphQLError, get_pull_requests_for_commits
+from rooster._github import (
+    GitHubGraphQLError,
+    get_pull_requests_for_commits,
+    parse_remote_url,
+)
 
 
 @pytest.mark.parametrize("labels", [(), ("release",), ("tracking",)])
@@ -267,3 +271,40 @@ def test_requested_commit_missing_from_history_warns(github_api, capsys):
     warning = capsys.readouterr().err
     assert missing.id in warning
     assert "not found in GitHub history" in warning
+
+
+@pytest.mark.parametrize(
+    "remote",
+    [
+        "https://github.com/owner/repo",
+        "https://github.com/owner/repo.git/",
+        "git@github.com:owner/repo.git",
+        "ssh://git@github.com/owner/repo.git",
+        "ssh://git@ssh.github.com:443/owner/repo.git",
+        "git://github.com/owner/repo.git",
+        "https://user:not-a-real-token@github.com/owner/repo.git",
+    ],
+)
+def test_github_remote_url_forms(remote):
+    assert parse_remote_url(remote) == ("owner", "repo")
+
+
+@pytest.mark.parametrize(
+    "remote",
+    [
+        "repo",
+        "/local/repo",
+        "https://github.com/owner",
+        "https://github.com/owner/repo/tree/main",
+        "https://gitlab.com/owner/repo",
+        "https://github.com/owner/.git",
+        "https://github.com/owner/repo?query=value",
+        "https://github.com/owner/repo#fragment",
+        "https://github.com/owner/%2frepo",
+        "https://user:not-a-real-token@example.com/owner/repo",
+    ],
+)
+def test_invalid_remote_urls_do_not_select_a_github_repository(remote):
+    with pytest.raises(ValueError, match="GitHub remote URL") as exc:
+        parse_remote_url(remote)
+    assert "not-a-real-token" not in str(exc.value)
