@@ -203,7 +203,6 @@ class HttpClient(httpx.Client):
         """
         Send a request with automatic retry behavior for the following status codes:
 
-        - 403 Forbidden, if the request failed due to CSRF protection
         - 408 Request Timeout
         - 429 CloudFlare-style rate limiting
         - 502 Bad Gateway
@@ -224,14 +223,15 @@ class HttpClient(httpx.Client):
             },
             retry_exceptions=(
                 httpx.ReadTimeout,
+                httpx.WriteTimeout,
                 httpx.PoolTimeout,
                 httpx.ConnectTimeout,
+                httpx.ConnectError,
                 # `ConnectionResetError` when reading socket raises as a `ReadError`
                 httpx.ReadError,
                 # Sockets can be closed during writes resulting in a `WriteError`
                 httpx.WriteError,
                 httpx.RemoteProtocolError,
-                httpx.LocalProtocolError,
             ),
         )
 
