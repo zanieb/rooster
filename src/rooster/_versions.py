@@ -168,18 +168,26 @@ def update_version_file(
         format = version_file.format
         field = version_file.field
 
-    if format == "cargo" or path.name.lower() == "cargo.toml":
+    if format is None:
+        if path.name.lower() == "cargo.toml":
+            format = "cargo"
+        elif path.name.lower() == "pyproject.toml":
+            format = "pyproject"
+        elif path.suffix.lower() in {".md", ".txt"}:
+            format = "text"
+
+    if format == "cargo":
         update_toml_version(
             path,
             field or "package.version",
             to_cargo_version(old_version),
             to_cargo_version(new_version),
         )
-    elif format == "pyproject" or path.name.lower() == "pyproject.toml":
+    elif format in {"pyproject", "toml"}:
         update_toml_version(
             path, field or "project.version", str(old_version), str(new_version)
         )
-    elif path.suffix.lower() == ".md" or path.suffix.lower() == ".txt":
+    elif format == "text":
         if old_version is None:
             raise ValueError(
                 f"Cannot update version in file {path.name} without a previous version"
