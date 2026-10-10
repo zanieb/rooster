@@ -134,6 +134,7 @@ class HttpClient(httpx.Client):
         response = None
 
         while try_count <= MAX_RETRIES:
+            response = None
             retry_seconds = None
             server_delay = False
             exc_info = None
@@ -158,6 +159,7 @@ class HttpClient(httpx.Client):
                         response.headers["Retry-After"]
                     )
                     server_delay = retry_seconds is not None
+                response.close()
 
             # Use an exponential back-off if not set in a header
             if retry_seconds is None:
