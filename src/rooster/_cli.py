@@ -103,7 +103,11 @@ def release(
     if remote is None:
         typer.echo("Failed to determine remote for repository.")
         raise typer.Exit(1)
-    owner, repo_name = parse_remote_url(remote)
+    try:
+        owner, repo_name = parse_remote_url(remote)
+    except ValueError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from None
 
     # Collect pull requests corresponding to each commit
     typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")
@@ -150,7 +154,11 @@ def release(
         if remote is None:
             typer.echo("Failed to determine remote for submodule.")
             raise typer.Exit(1)
-        owner, repo_name = parse_remote_url(remote)
+        try:
+            owner, repo_name = parse_remote_url(remote)
+        except ValueError as exc:
+            typer.echo(str(exc))
+            raise typer.Exit(1) from None
 
         # Collect pull requests corresponding to each commit
         typer.echo(f"Retrieving pull requests for changes from {owner}/{repo_name}...")

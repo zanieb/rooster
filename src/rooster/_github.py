@@ -8,6 +8,7 @@ import sys
 import textwrap
 from collections.abc import Sequence
 from typing import Protocol, Self
+from urllib.parse import unquote, urlsplit
 
 import httpx
 
@@ -105,15 +106,32 @@ def parse_remote_url(remote_url: str) -> tuple[str, str]:
     """
     Parse a Git remote URL into owner and repository components.
     """
-    ssh_prefix = "git@github.com:"
-    if remote_url.startswith(ssh_prefix):
-        owner_slash_repo = remote_url[len(ssh_prefix) :]
-        owner, repo = owner_slash_repo.split("/")
-    else:
-        parts = remote_url.split("/")
-        owner = parts[-2]
-        repo = parts[-1]
+    if remote_url.lower().startswith("git@github.com:"):
+        remote_url = "ssh://git@github.com/" + remote_url.split(":", 1)[1]
+    message = "Expected a GitHub remote URL with an owner and repository"
+    try:
+        parsed = urlsplit(remote_url)
+        host = parsed.hostname
+    except ValueError:
+        raise ValueError(message) from None
+    valid_host = host == "github.com" or (
+        host == "ssh.github.com" and parsed.scheme == "ssh"
+    )
+    parts = parsed.path.strip("/").split("/")
+    if (
+        parsed.scheme not in {"https", "http", "ssh", "git"}
+        or not valid_host
+        or parsed.query
+        or parsed.fragment
+        or len(parts) != 2
+    ):
+        raise ValueError(message)
+    owner, repo = (unquote(part) for part in parts)
     repo = repo.removesuffix(".git")
+    if not all(re.fullmatch(r"[A-Za-z0-9_.-]+", part) for part in (owner, repo)):
+        raise ValueError(message)
+    if owner in {".", ".."} or repo in {".", ".."}:
+        raise ValueError(message)
     return owner, repo
 
 
