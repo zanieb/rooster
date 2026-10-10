@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import abc
 import copy
+import re
 from collections import defaultdict
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
@@ -20,7 +21,6 @@ from rooster._config import Config
 from rooster._github import PullRequest
 from rooster._versions import (
     Version,
-    get_previous_version,
     parse_version,
     to_cargo_version,
 )
@@ -486,6 +486,30 @@ def ensure_spacing(changelog: str) -> str:
     return changelog.rstrip("\n") + "\n"
 
 
+def _headings(changelog: str) -> Iterable[tuple[int, int, str]]:
+    """Yield source offsets, levels, and titles of unfenced ATX headings."""
+    offset = 0
+    fence = ""
+    for line in changelog.splitlines(keepends=True):
+        start = offset
+        offset += len(line)
+        if fence:
+            if re.fullmatch(
+                rf" {{0,3}}{re.escape(fence[0])}{{{len(fence)},}}[ \t]*",
+                line.rstrip("\r\n"),
+            ):
+                fence = ""
+            continue
+        if (match := re.match(r" {0,3}(`{3,}|~{3,})(.*)", line)) and (
+            match[1][0] != "`" or "`" not in match[2]
+        ):
+            fence = match[1]
+            continue
+        if match := re.fullmatch(r" {0,3}(#{1,6})(?:[ \t]+(.*))?", line.rstrip("\r\n")):
+            title = re.sub(r"[ \t]+#+[ \t]*$", "", match[2] or "").strip()
+            yield start, len(match[1]), title
+
+
 def get_versions_from_changelog(config: Config, changelog: str) -> list[Version]:
     """
     Get all versions from headings from the changelog
@@ -493,9 +517,9 @@ def get_versions_from_changelog(config: Config, changelog: str) -> list[Version]
 
     return [
         version
-        for line in changelog.splitlines()
-        if line.startswith(VERSION_HEADING_PREFIX)
-        if (version := parse_version(config, line[2:].strip())) is not None
+        for _, level, title in _headings(changelog)
+        if level == 2
+        if (version := parse_version(config, title)) is not None
     ]
 
 
@@ -503,39 +527,13 @@ def extract_entry(config: Config, changelog: str, version: Version) -> str | Non
     """
     Extract an entry for the given version from the changelog
     """
-    version_str = (
-        to_cargo_version(version) if config.version_format == "cargo" else str(version)
-    )
-    heading = f"{VERSION_HEADING_PREFIX}{version_str}\n\n"
-
-    versions = get_versions_from_changelog(config, changelog)
-    previous_version = get_previous_version(versions, version)
-
-    # If there are no versions in the file, return `None`
-    if not previous_version and heading not in changelog:
-        return None
-
-    previous_version_str = (
-        (
-            to_cargo_version(version)
-            if config.version_format == "cargo"
-            else str(version)
-        )
-        if previous_version
-        else None
-    )
-    previous_heading = (
-        f"{VERSION_HEADING_PREFIX}{previous_version_str}\n\n"
-        if previous_version
-        else None
-    )
-
-    if heading not in changelog:
-        return None
-
-    start = changelog.index(heading)
-    end = changelog.index(previous_heading) if previous_heading else len(changelog)
-    return changelog[start:end]
+    start = None
+    for offset, level, title in _headings(changelog):
+        if start is not None and level <= 2:
+            return changelog[start:offset]
+        if level == 2 and parse_version(config, title) == version:
+            start = offset
+    return changelog[start:] if start is not None else None
 
 
 def entry_to_standalone(changelog_entry: str, version: Version) -> str:
