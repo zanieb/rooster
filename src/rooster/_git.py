@@ -93,26 +93,24 @@ def get_commits_between_commits(
     Yield all commits between two commits, inclusive of the new commit but not
     the old commit.
 
-    If the old commit is `None`, the initial commit will be used.
+    If the old commit is `None`, all ancestors, including the root, are included.
     If the new commit is `None`, HEAD will be used.
     """
     new_commit = new_commit or get_latest_commit(repo)
-    yield new_commit
-
-    # Walk backwards from the second commit until we find the first commit
-    for commit in repo.walk(new_commit.id):
-        if (
-            old_commit
-            and commit.id == old_commit.id
-            or commit.id == "d07eefc408a59baa324541261b12f395e38b9344"
-        ):
-            break
-        yield commit
-    else:
-        if old_commit:
+    if old_commit:
+        if old_commit.id == new_commit.id:
+            return
+        if not repo.descendant_of(new_commit.id, old_commit.id):
             raise GitLookupError(
                 f"Could not find commit {old_commit.id} in ancestors of {new_commit.id}; is {old_commit.id} on a different branch?"
             )
+
+    # Exclude the entire released history, including ancestors reached through
+    # another parent of a merge commit.
+    walker = repo.walk(new_commit.id, git.enums.SortMode.TOPOLOGICAL)
+    if old_commit:
+        walker.hide(old_commit.id)
+    yield from walker
 
 
 def get_remote_url(
