@@ -54,9 +54,9 @@ def get_submodule_commit(
     repo: git.repository.Repository,
     at_commit: git.Commit | None,
     submodule: git.repository.Repository,
-) -> git.Commit:
+) -> git.Commit | None:
     if not at_commit:
-        return get_latest_commit(submodule)
+        return None
 
     # Get the tree at that commit
     tree = at_commit.tree
@@ -69,17 +69,20 @@ def get_submodule_commit(
         for i, part in enumerate(path_parts):
             if i == len(path_parts) - 1:
                 entry = current_tree[part]
-                if entry.type_str == "commit":
-                    return cast(git.Commit, entry)
-                else:
+                if entry.type_str != "commit":
                     raise ValueError(f"{submodule.workdir} is not a submodule")
+                break
             else:
                 entry = current_tree[part]
                 if entry.type_str != "tree":
                     raise ValueError(f"Path component {part} is not a directory")
                 current_tree = cast(git.Tree, repo.get(entry.id))
     except KeyError:
-        raise ValueError(f"Submodule {submodule} not found at commit {at_commit.id}")
+        # A newly added submodule has no previous release boundary.
+        return None
+    else:
+        # A gitlink stores an object ID from the submodule's object database.
+        return submodule[entry.id].peel(git.Commit)
 
     raise ValueError(f"Could not find submodule {submodule.workdir}")
 

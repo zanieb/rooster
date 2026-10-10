@@ -111,13 +111,21 @@ def release(
 
     for submodule_path in config.submodules:
         typer.echo(f"Inspecting submodule `{submodule_path.name}`")
-        submodule = repo_from_path(submodule_path)
+        submodule = repo_from_path(directory / submodule_path)
         last_submodule_commit = get_submodule_commit(
             repo, last_version_commit, submodule
         )
-        latest_submodule_commit = get_latest_commit(submodule)
+        latest_submodule_commit = get_submodule_commit(repo, latest_commit, submodule)
+        if latest_submodule_commit is None:
+            typer.echo(f"Submodule `{submodule_path}` is not recorded at HEAD.")
+            raise typer.Exit(1)
+        submodule_start = (
+            str(last_submodule_commit.id)[:8]
+            if last_submodule_commit
+            else "the start of history"
+        )
         typer.echo(
-            f"Collecting commits for submodule `{submodule_path}` between {str(last_submodule_commit.id)[:8]} and {str(latest_submodule_commit.id)[:8]}..."
+            f"Collecting commits for submodule `{submodule_path}` between {submodule_start} and {str(latest_submodule_commit.id)[:8]}..."
         )
         try:
             submodule_changes = list(

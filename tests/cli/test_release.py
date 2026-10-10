@@ -4,7 +4,9 @@ import tomllib
 import pytest
 
 from rooster._cli import release
+from rooster._github import PullRequest
 from rooster._testing import empty_commit, git_directory
+from tests.test_git import commit, git
 
 
 def project_with_change(directory, github_api, *, labels=(), config=""):
@@ -92,6 +94,53 @@ def test_first_release_includes_the_root_commit(git_directory, github_api, capsy
     changelog = (git_directory / "CHANGELOG.md").read_text()
     assert "[#1]" in changelog
     assert "[#2]" in changelog
+
+
+def test_release_uses_recorded_submodule_revision(
+    git_directory, github_api, monkeypatch
+):
+    project_with_change(
+        git_directory,
+        github_api,
+        config='[tool.rooster]\nsubmodules = ["vendor/dep"]\n',
+    )
+    path = git_directory / "vendor" / "dep"
+    path.mkdir(parents=True)
+    git(path, "init", "-b", "main")
+    git(path, "config", "user.name", "Test User")
+    git(path, "config", "user.email", "test@example.com")
+    git(path, "remote", "add", "origin", "https://github.com/owner/dep")
+    included = commit(path, "Included")
+    git(
+        git_directory,
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        f"160000,{included.id},vendor/dep",
+    )
+    commit(git_directory, "Record submodule")
+    commit(path, "Not included")
+    calls = {}
+
+    def collect(owner, name, commits):
+        calls[name] = [c.id for c in commits]
+        return [
+            PullRequest(
+                "Change",
+                1,
+                frozenset(),
+                "author",
+                name,
+                owner,
+                f"https://github.com/{owner}/{name}/pull/1",
+            )
+        ]
+
+    monkeypatch.setattr("rooster._cli.get_pull_requests_for_commits", collect)
+
+    release(directory=git_directory, update_version_files=False)
+
+    assert calls["dep"] == [included.id]
 
 
 def test_rebased_breaking_change_bumps_minor_version(git_directory, github_api, capsys):

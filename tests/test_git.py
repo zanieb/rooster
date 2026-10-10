@@ -6,6 +6,7 @@ from rooster._git import (
     GitLookupError,
     get_commits_between_commits,
     get_latest_commit,
+    get_submodule_commit,
     repo_from_path,
 )
 from rooster._testing import git_directory
@@ -63,3 +64,32 @@ def test_commit_range_rejects_unrelated_base(git_directory):
 
     with pytest.raises(GitLookupError, match="different branch"):
         list(get_commits_between_commits(repo_from_path(git_directory), old, head))
+
+
+def test_submodule_revision_uses_the_submodule_object_database(git_directory):
+    before = commit(git_directory, "Before submodule")
+    path = git_directory / "vendor" / "dep"
+    path.mkdir(parents=True)
+    git(path, "init", "-b", "main")
+    git(path, "config", "user.name", "Test User")
+    git(path, "config", "user.email", "test@example.com")
+    included = commit(path, "Included dependency revision")
+    git(
+        git_directory,
+        "update-index",
+        "--add",
+        "--cacheinfo",
+        f"160000,{included.id},vendor/dep",
+    )
+    parent = commit(git_directory, "Add submodule")
+    commit(path, "Unrecorded dependency revision")
+    repo = repo_from_path(git_directory)
+    submodule = repo_from_path(path)
+
+    found = get_submodule_commit(repo, parent, submodule)
+
+    assert found is not None
+    assert found.id == included.id
+    assert found.message == "Included dependency revision\n"
+    assert get_submodule_commit(repo, before, submodule) is None
+    assert get_submodule_commit(repo, None, submodule) is None
