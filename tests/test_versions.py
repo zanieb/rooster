@@ -3,7 +3,32 @@ from packaging.version import Version
 
 from rooster._changelog import get_versions_from_changelog
 from rooster._config import BumpType, Config
-from rooster._versions import bump_version, get_latest_version, to_cargo_version
+from rooster._git import get_commit_for_tag, repo_from_path
+from rooster._testing import git_directory
+from rooster._versions import (
+    bump_version,
+    get_latest_version,
+    to_cargo_version,
+    versions_from_git_tags,
+)
+from tests.test_git import commit, git
+
+
+@pytest.mark.parametrize("prefix", ["v", "release/", ""])
+@pytest.mark.parametrize("annotated", [False, True])
+def test_version_tags_retain_their_lookup_name(git_directory, prefix, annotated):
+    head = commit(git_directory, "Release")
+    tag = prefix + "1.2.3"
+    args = ["tag", tag]
+    if annotated:
+        args.extend(["-a", "-m", "Release"])
+    git(git_directory, *args)
+    repo = repo_from_path(git_directory)
+
+    tags = versions_from_git_tags(Config(version_tag_prefix=prefix), repo)
+
+    assert tags == {Version("1.2.3"): tag}
+    assert get_commit_for_tag(repo, tags[Version("1.2.3")]).id == head.id
 
 
 def test_latest_version_accepts_iterators():

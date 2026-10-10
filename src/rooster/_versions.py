@@ -27,7 +27,7 @@ def versions_from_git_tags(
     """
     tags = get_tags(config, repo)
     return {
-        version: tag
+        version: config.version_tag_prefix + tag
         for tag in tags
         if (version := parse_version(config, tag)) is not None
     }
