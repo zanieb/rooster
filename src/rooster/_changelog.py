@@ -274,6 +274,8 @@ class VersionSection(Section):
         level: int = 2,
         release_date: date | None = None,
     ) -> Self:
+        if not 1 <= level <= 5:
+            raise ValueError("Version heading level must be between 1 and 5")
         pull_requests = list(pull_requests)
         section_labels = defaultdict(list, copy.deepcopy(config.section_labels))
 
@@ -335,6 +337,7 @@ class VersionSection(Section):
                 config=config,
                 section=section,
                 pull_requests=section_pull_requests,
+                level=level + 1,
             )
             children.append(changes_section.element)
             children.extend(changes_section.children)
@@ -347,7 +350,7 @@ class VersionSection(Section):
         }
         if config.changelog_contributors and authors:
             contributors = ContributorsSection.from_authors(
-                document=document, authors=authors
+                document=document, authors=authors, level=level + 1
             )
             children.append(contributors.element)
             children.extend(contributors.children)

@@ -51,6 +51,23 @@ def test_changelog_accepts_pull_request_generators():
     assert "[@author]" in result
 
 
+@pytest.mark.parametrize("level", [1, 2, 3, 4, 5])
+def test_generated_sections_are_nested_under_the_release_heading(level):
+    document = Document.from_markdown(render_entry([pull_request(1)], level=level))
+    release = VersionSection.from_elements(document, document.document.children, level)[
+        0
+    ]
+    sections = release.sections()
+    assert [section.title for section in sections] == ["Changes", "Contributors"]
+    assert [section.element.level for section in sections] == [level + 1, level + 1]
+
+
+@pytest.mark.parametrize("level", [0, 6])
+def test_invalid_release_heading_levels_are_rejected(level):
+    with pytest.raises(ValueError, match="heading level"):
+        render_entry([pull_request(1)], level=level)
+
+
 @pytest.mark.parametrize("excluded", ["Features", "feature"])
 def test_sections_can_be_excluded_by_name_or_legacy_label(excluded):
     result = render_entry(
