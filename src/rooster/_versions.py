@@ -4,12 +4,14 @@ Utilities for working with version numbers.
 
 import re
 import tomllib
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
 import pygit2 as git
+import tomlkit
 from packaging.version import InvalidVersion, Version
+from tomlkit.items import String
 
 from rooster._config import BumpType, Config, VersionFile
 from rooster._git import get_commit_for_tag, get_latest_commit, get_tags
@@ -245,18 +247,19 @@ def update_toml_version(
     except KeyError:
         raise KeyError(f"{key} not found in {path}")
 
-    last_key = key.split(".")[-1]
-
     # Ensure the contents matches the expected old version
     if found_old_version != old_version:
         raise ValueError(
             f"Mismatched version in {path}::{key}; expected {old_version} found {found_old_version}"
         )
 
-    # Update with a string replacement to avoid reformatting the whole file
-    contents = contents.replace(
-        f'{last_key} = "{old_version}"', f'{last_key} = "{new_version}"', 1
-    )
+    document = tomlkit.parse(contents)
+    parent_key, _, last_key = key.rpartition(".")
+    parent = _get_nested_key(document, parent_key) if parent_key else document
+    previous = parent[last_key]
+    assert isinstance(previous, String)
+    parent[last_key] = String.from_raw(new_version, type_=previous.type)
+    contents = tomlkit.dumps(document)
 
     # Confirm we updated the correct key
     new_parsed = tomllib.loads(contents)
@@ -270,7 +273,7 @@ def update_toml_version(
     path.write_text(contents)
 
 
-def _get_nested_key(source: dict[str, Any], key: str):
+def _get_nested_key(source: Mapping[str, Any], key: str):
     current = source
     for name in key.split("."):
         current = current[name]
