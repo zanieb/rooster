@@ -2,6 +2,7 @@
 Utilities for working with version numbers.
 """
 
+import re
 import tomllib
 from collections.abc import Iterable
 from pathlib import Path
@@ -15,6 +16,11 @@ from rooster._git import get_commit_for_tag, get_latest_commit, get_tags
 
 CARGO_PRE_MAP = {"a": "alpha", "b": "beta", "rc": "rc"}
 CARGO_PRE_MAP_REVERSE = {v: k for k, v in CARGO_PRE_MAP.items()}
+CARGO_VERSION_PATTERN = re.compile(
+    r"(?P<release>(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))"
+    r"(?:-(?P<kind>alpha|beta|rc)\.(?P<number>0|[1-9][0-9]*))?"
+    r"(?:\+(?P<build>[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?"
+)
 
 
 def versions_from_git_tags(
@@ -135,13 +141,15 @@ def from_cargo_version(version: str) -> Version:
     """
     Convert a version string from Cargo.toml to a Version object.
     """
-    parts = version.split("-")
-    if len(parts) == 1:
-        return Version(parts[0])
-    else:
-        pre_parts = parts[1].split(".")
-        pre = (CARGO_PRE_MAP_REVERSE[pre_parts[0]], int(pre_parts[1]))
-        return Version(f"{parts[0]}{pre[0]}{pre[1]}")
+    match = CARGO_VERSION_PATTERN.fullmatch(version)
+    if match is None:
+        raise InvalidVersion(f"Unsupported Cargo version: {version!r}")
+    release = match["release"]
+    build = f"+{match['build']}" if match["build"] else ""
+    if match["kind"] is None:
+        return Version(release + build)
+    pre = CARGO_PRE_MAP_REVERSE[match["kind"]]
+    return Version(f"{release}{pre}{match['number']}{build}")
 
 
 def update_version_file(

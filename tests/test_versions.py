@@ -8,6 +8,7 @@ from rooster._testing import git_directory
 from rooster._versions import (
     bump_version,
     get_latest_version,
+    parse_version,
     to_cargo_version,
     versions_from_git_tags,
 )
@@ -92,3 +93,37 @@ def test_cargo_conversion_does_not_drop_development_suffix():
 )
 def test_cargo_version_conversion(version, expected):
     assert to_cargo_version(Version(version)) == expected
+
+
+@pytest.mark.parametrize(
+    "tag",
+    [
+        "not-a-version",
+        "1.2.3-preview.1",
+        "1.2.3-alpha",
+        "1.2.3-alpha.nope",
+        "1.2.3-alpha.1.extra",
+        "1.2.3-rc.1-ignored",
+        "1.2",
+        "01.2.3",
+        "1!1.2.3",
+        "1.2.3rc1",
+    ],
+)
+def test_unsupported_cargo_tags_are_ignored(tag):
+    assert parse_version(Config(version_format="cargo"), tag) is None
+
+
+@pytest.mark.parametrize(
+    ("tag", "expected"),
+    [
+        ("1.2.3", "1.2.3"),
+        ("1.2.3-alpha.0", "1.2.3a0"),
+        ("1.2.3-beta.2", "1.2.3b2"),
+        ("1.2.3-rc.1", "1.2.3rc1"),
+        ("1.2.3+build.42", "1.2.3+build.42"),
+        ("1.2.3-rc.1+build.42", "1.2.3rc1+build.42"),
+    ],
+)
+def test_supported_cargo_tags(tag, expected):
+    assert parse_version(Config(version_format="cargo"), tag) == Version(expected)
