@@ -127,3 +127,15 @@ def test_unsupported_cargo_tags_are_ignored(tag):
 )
 def test_supported_cargo_tags(tag, expected):
     assert parse_version(Config(version_format="cargo"), tag) == Version(expected)
+
+
+@pytest.mark.parametrize("version", ["1!1.2.3", "1.2.3.post1", "1.2.3.4"])
+def test_cargo_conversion_rejects_unrepresentable_versions(version):
+    with pytest.raises(ValueError, match="cannot be converted"):
+        to_cargo_version(Version(version))
+
+
+@pytest.mark.parametrize("version", ["1.2.3+build.42", "1.2.3rc1+build.42"])
+def test_cargo_conversion_preserves_build_metadata(version):
+    config = Config(version_format="cargo")
+    assert parse_version(config, to_cargo_version(Version(version))) == Version(version)

@@ -132,9 +132,13 @@ def to_cargo_version(version: Version) -> str:
     """
     if version.dev is not None:
         raise ValueError("Development releases cannot be converted to Cargo versions")
+    if version.epoch or version.post is not None or len(version.release) > 3:
+        raise ValueError(f"Version {version} cannot be converted to a Cargo version")
+    release = f"{version.major}.{version.minor}.{version.micro}"
+    build = f"+{version.local}" if version.local is not None else ""
     if version.pre is None:
-        return f"{version.major}.{version.minor}.{version.micro}"
-    return f"{version.major}.{version.minor}.{version.micro}-{CARGO_PRE_MAP[version.pre[0]]}.{version.pre[1]}"
+        return release + build
+    return f"{release}-{CARGO_PRE_MAP[version.pre[0]]}.{version.pre[1]}{build}"
 
 
 def from_cargo_version(version: str) -> Version:
