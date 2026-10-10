@@ -7,6 +7,7 @@ from rooster._changelog import (
     Changelog,
     Document,
     VersionSection,
+    entry_to_standalone,
     extract_entry,
     get_versions_from_changelog,
 )
@@ -177,6 +178,25 @@ def test_version_headings_in_fenced_examples_are_ignored(fence):
     changelog = entry + "# Appendix\n\nOutside the release.\n"
     assert extract_entry(Config(), changelog, Version("1.0.0")) == entry
     assert get_versions_from_changelog(Config(), changelog) == [Version("1.0.0")]
+
+
+@pytest.mark.parametrize(
+    ("heading", "version"),
+    [("## 1.0.0", "1.0.0"), ("## 1.0.0-alpha.1", "1.0.0a1")],
+)
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_standalone_entry_replaces_only_the_release_heading(heading, version, newline):
+    body = f"{newline}Notes.{newline}{newline}```markdown{newline}{heading}{newline}```{newline}"
+    result = entry_to_standalone(heading + newline + body, Version(version))
+    assert result == (
+        f"## Changes{newline}<!-- Generated from the CHANGELOG file -->{newline}" + body
+    )
+
+
+def test_standalone_entry_accepts_a_heading_without_final_newline():
+    assert entry_to_standalone("## 1.0.0", Version("1.0.0")) == (
+        "## Changes\n<!-- Generated from the CHANGELOG file -->\n"
+    )
 
 
 def test_extract_cargo_prerelease_with_closing_heading_markers():

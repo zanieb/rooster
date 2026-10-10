@@ -540,7 +540,15 @@ def entry_to_standalone(changelog_entry: str, version: Version) -> str:
     """
     Convert an entry from the CHANGELOG file to a standalone entry (omitting the version)
     """
-    return changelog_entry.replace(
-        f"{VERSION_HEADING_PREFIX} {version}\n",
-        f"{VERSION_HEADING_PREFIX} Changes\n<!-- Generated from the CHANGELOG file -->\n",
-    )
+    for start, level, title in _headings(changelog_entry):
+        if level != 2 or parse_version(Config(), title) != version:
+            continue
+        end = changelog_entry.find("\n", start)
+        end = len(changelog_entry) if end < 0 else end + 1
+        newline = "\r\n" if changelog_entry[start:end].endswith("\r\n") else "\n"
+        heading = (
+            f"{VERSION_HEADING_PREFIX}Changes{newline}"
+            f"<!-- Generated from the CHANGELOG file -->{newline}"
+        )
+        return changelog_entry[:start] + heading + changelog_entry[end:]
+    return changelog_entry
