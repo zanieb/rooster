@@ -49,6 +49,9 @@ that are unavailable on GitHub, so those changes can be reviewed separately.
 
 Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may disable this behavior with `ROOSTER_NO_CACHE=1`.
 
+GraphQL requests allow 10 seconds to connect and 30 seconds of inactivity while
+reading or writing. Transient network failures are retried up to five times.
+
 ## Development
 
 Rooster requires Python 3.15. Until Python 3.15 wheels are available for all
