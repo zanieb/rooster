@@ -3,7 +3,13 @@ from datetime import date
 import pytest
 from packaging.version import Version
 
-from rooster._changelog import Changelog, Document, VersionSection
+from rooster._changelog import (
+    Changelog,
+    Document,
+    VersionSection,
+    extract_entry,
+    get_versions_from_changelog,
+)
 from rooster._config import Config
 from rooster._github import PullRequest
 
@@ -154,4 +160,30 @@ def test_unreleased_heading_stays_above_inserted_release():
     result = changelog.to_markdown()
     assert (
         result.index("Pending.") < result.index("## 2.0.0") < result.index("## 1.0.0")
+    )
+
+
+@pytest.mark.parametrize("newline", ["\n", "\r\n"])
+def test_extract_entry_uses_source_boundaries(newline):
+    entry = "## 2.0.0\nNotes.\n\n### Fixes\n\n- A fix\n\n".replace("\n", newline)
+    changelog = "# Changelog\n\n" + entry + "## 1.0.0\n\nOlder notes.\n"
+    assert extract_entry(Config(), changelog, Version("2.0.0")) == entry
+    assert extract_entry(Config(), changelog, Version("3.0.0")) is None
+
+
+@pytest.mark.parametrize("fence", ["```", "~~~~"])
+def test_version_headings_in_fenced_examples_are_ignored(fence):
+    entry = f"## 1.0.0\n\n{fence}markdown\n## 9.0.0\n{fence}\n\nMore notes.\n\n"
+    changelog = entry + "# Appendix\n\nOutside the release.\n"
+    assert extract_entry(Config(), changelog, Version("1.0.0")) == entry
+    assert get_versions_from_changelog(Config(), changelog) == [Version("1.0.0")]
+
+
+def test_extract_cargo_prerelease_with_closing_heading_markers():
+    entry = "## 1.0.0-alpha.1 ##\n\nNotes.\n\n"
+    assert (
+        extract_entry(
+            Config(version_format="cargo"), entry + "## 0.9.0\n", Version("1.0.0a1")
+        )
+        == entry
     )
