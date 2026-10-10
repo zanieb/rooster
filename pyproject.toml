@@ -29,6 +29,7 @@ dependencies = [
     "hishel>=0.0.24,<1.0.0",
     "pydantic>=2.13.5",
     "marko>=2.0.2",
+    "tomlkit>=0.15.1",
 ]
 
 [project.scripts]
