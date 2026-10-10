@@ -215,3 +215,27 @@ def test_unpublished_leading_commit_is_skipped(github_api):
 def test_empty_commit_list_does_not_query_github(github_api):
     assert get_pull_requests_for_commits("owner", "repo", []) == []
     assert not github_api.requests
+
+
+def test_history_pagination_counts_requested_commits(github_api):
+    github_api.page_size = 1
+    first = github_api.commit("Change 1 (#1)", github_api.pull_request(1))
+    github_api.commit("Outside range (#2)", github_api.pull_request(2))
+    last = github_api.commit("Change 3 (#3)", github_api.pull_request(3))
+    github_api.commit("Older change (#4)", github_api.pull_request(4))
+
+    result = get_pull_requests_for_commits("owner", "repo", [first, last])
+
+    assert [pr.number for pr in result] == [1, 3]
+    assert len(github_api.requests) == 3
+
+
+def test_duplicate_commit_inputs_do_not_extend_history_pagination(github_api):
+    github_api.page_size = 1
+    commit = github_api.commit("Change 1 (#1)", github_api.pull_request(1))
+    github_api.commit("Older change (#2)", github_api.pull_request(2))
+
+    result = get_pull_requests_for_commits("owner", "repo", [commit, commit])
+
+    assert [pr.number for pr in result] == [1]
+    assert len(github_api.requests) == 1

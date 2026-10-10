@@ -136,8 +136,7 @@ def get_pull_requests_for_commits(
     referenced_pull_requests: dict[tuple[int, str], PullRequest | None] = {}
     expanded_pull_requests: set[int] = set()
     unresolved_commits: list[tuple[str, PullRequest]] = []
-    seen_commits = 0
-    expected_commits = {str(commit.id) for commit in commits}
+    remaining_commits = {str(commit.id) for commit in commits}
 
     # Note we use `first: 10` on `history` because GitHub can otherwise
     # encounter an internal timeout and return a 502
@@ -208,18 +207,20 @@ def get_pull_requests_for_commits(
                 },
             )
             response_commits = response["data"]["repository"]["commit"]
+            if not response_commits:
+                remaining_commits.discard(str(first_commit.id))
 
         # Then paginate through the commits
-        while next_page and seen_commits < len(commits):
+        while next_page and remaining_commits:
             response_commits = response["data"]["repository"]["commit"]
             if not response_commits:
                 break
 
             response_commits = response_commits["history"]["nodes"]
-            seen_commits += len(response_commits)
             for commit in response_commits:
-                if commit["oid"] not in expected_commits:
+                if commit["oid"] not in remaining_commits:
                     continue
+                remaining_commits.remove(commit["oid"])
 
                 associated = next(
                     (
@@ -273,7 +274,7 @@ def get_pull_requests_for_commits(
             page_info = response["data"]["repository"]["commit"]["history"]["pageInfo"]
             next_page = page_info["hasNextPage"]
             page_start = page_info["endCursor"]
-            if not next_page or seen_commits >= len(commits):
+            if not next_page or not remaining_commits:
                 break
 
             response = _graphql(
