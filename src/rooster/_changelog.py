@@ -299,22 +299,24 @@ class VersionSection(Section):
 
         # De-duplicate pull requests and sort into sections
         for pull_request in sorted(set(pull_requests)):
-            for label in pull_request.labels:
-                if label in config.changelog_ignore_labels:
-                    break
-                if label in without_sections:
-                    break
-            else:
-                # Iterate in-order of changelog sections to support user-configured precedence
-                for section, labels in section_labels.items():
-                    if only_sections and section not in only_sections:
-                        continue
-                    if pull_request.labels.intersection(labels):
-                        sections[section].append(pull_request)
-                        break
-                else:
-                    if not only_sections:
-                        sections[other_section].append(pull_request)
+            if pull_request.labels.intersection(config.changelog_ignore_labels):
+                continue
+            # Label names remain accepted by --without-sections for compatibility.
+            if pull_request.labels.intersection(without_sections):
+                continue
+            section = next(
+                (
+                    section
+                    for section, labels in section_labels.items()
+                    if pull_request.labels.intersection(labels)
+                ),
+                other_section,
+            )
+            if only_sections and section not in only_sections:
+                continue
+            if section in without_sections:
+                continue
+            sections[section].append(pull_request)
 
         children = []
         for section, section_pull_requests in sections.items():

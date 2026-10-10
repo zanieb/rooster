@@ -1,5 +1,6 @@
 from datetime import date
 
+import pytest
 from packaging.version import Version
 
 from rooster._changelog import Document, VersionSection
@@ -41,3 +42,37 @@ def test_changelog_accepts_pull_request_generators():
     assert "Change 1" in result
     assert "Change 2" in result
     assert "[@author]" in result
+
+
+@pytest.mark.parametrize("excluded", ["Features", "feature"])
+def test_sections_can_be_excluded_by_name_or_legacy_label(excluded):
+    result = render_entry(
+        [pull_request(1, labels=["feature"]), pull_request(2)],
+        config=Config(section_labels={"Features": ["feature"]}),
+        without_sections=[excluded],
+    )
+    assert "Change 1" not in result
+    assert "Change 2" in result
+
+
+@pytest.mark.parametrize(
+    ("config", "section"),
+    [
+        (Config(), "Changes"),
+        (Config(section_labels={"Uncategorized": ["__unknown__"]}), "Uncategorized"),
+    ],
+)
+def test_fallback_section_can_be_selected(config, section):
+    result = render_entry([pull_request(1)], config=config, only_sections=[section])
+    assert "Change 1" in result
+
+
+def test_section_filter_does_not_change_label_precedence():
+    result = render_entry(
+        [pull_request(1, labels=["breaking", "feature"])],
+        config=Config(
+            section_labels={"Breaking": ["breaking"], "Features": ["feature"]}
+        ),
+        only_sections=["Features"],
+    )
+    assert "Change 1" not in result
