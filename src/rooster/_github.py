@@ -209,6 +209,11 @@ def get_pull_requests_for_commits(
             response_commits = response["data"]["repository"]["commit"]
             if not response_commits:
                 remaining_commits.discard(str(first_commit.id))
+                print(
+                    f"Warning: commit {first_commit.id} is not available on GitHub "
+                    f"in {owner}/{repo_name}; it will be omitted from the changelog.",
+                    file=sys.stderr,
+                )
 
         # Then paginate through the commits
         while next_page and remaining_commits:
@@ -269,6 +274,12 @@ def get_pull_requests_for_commits(
                     pull_requests.append(pull_request)
                     if not match:
                         unresolved_commits.append((commit["oid"], pull_request))
+                elif not match:
+                    print(
+                        f"Warning: no pull request found for commit {commit['oid']} "
+                        f"in {owner}/{repo_name}; it will be omitted from the changelog.",
+                        file=sys.stderr,
+                    )
 
             # Get the next response
             page_info = response["data"]["repository"]["commit"]["history"]["pageInfo"]
@@ -287,6 +298,13 @@ def get_pull_requests_for_commits(
                     "after": page_start,
                 },
             )
+
+    for commit_id in sorted(remaining_commits):
+        print(
+            f"Warning: commit {commit_id} was not found in GitHub history for "
+            f"{owner}/{repo_name}; it will be omitted from the changelog.",
+            file=sys.stderr,
+        )
 
     for commit_id, pull_request in unresolved_commits:
         if pull_request.number in expanded_pull_requests:

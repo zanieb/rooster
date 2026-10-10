@@ -239,3 +239,31 @@ def test_duplicate_commit_inputs_do_not_extend_history_pagination(github_api):
 
     assert [pr.number for pr in result] == [1]
     assert len(github_api.requests) == 1
+
+
+def test_unassociated_direct_commit_warns(github_api, capsys):
+    commit = github_api.commit("A direct change")
+    assert get_pull_requests_for_commits("owner", "repo", [commit]) == []
+    warning = capsys.readouterr().err
+    assert commit.id in warning
+    assert "no pull request found" in warning
+    assert "omitted" in warning
+
+
+def test_unpublished_commit_warns(github_api, capsys):
+    commit = SimpleNamespace(id="f" * 40)
+    github_api.missing_commits.add(commit.id)
+    assert get_pull_requests_for_commits("owner", "repo", [commit]) == []
+    warning = capsys.readouterr().err
+    assert commit.id in warning
+    assert "not available on GitHub" in warning
+
+
+def test_requested_commit_missing_from_history_warns(github_api, capsys):
+    found = github_api.commit("Change 1 (#1)", github_api.pull_request(1))
+    missing = SimpleNamespace(id="f" * 40)
+    result = get_pull_requests_for_commits("owner", "repo", [found, missing])
+    assert [pr.number for pr in result] == [1]
+    warning = capsys.readouterr().err
+    assert missing.id in warning
+    assert "not found in GitHub history" in warning
