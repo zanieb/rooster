@@ -121,3 +121,55 @@ def test_transport_retries_are_bounded(monkeypatch, retry_delays):
         client.get("https://example.com")
     assert len(attempts) == 3
     assert retry_delays == [2, 4]
+
+
+class TrackingStream(httpx.SyncByteStream):
+    def __init__(self):
+        self.closed = False
+
+    def __iter__(self):
+        yield b"response body"
+
+    def close(self):
+        self.closed = True
+
+
+def test_retried_stream_is_closed_before_waiting(monkeypatch):
+    failed = TrackingStream()
+    final = TrackingStream()
+    responses = iter(
+        [httpx.Response(503, stream=failed), httpx.Response(200, stream=final)]
+    )
+    closed_at_sleep = []
+    monkeypatch.setattr(
+        _http.time, "sleep", lambda delay: closed_at_sleep.append(failed.closed)
+    )
+
+    with HttpClient(
+        transport=httpx.MockTransport(lambda request: next(responses))
+    ) as client:
+        response = client.send(
+            client.build_request("GET", "https://example.com"), stream=True
+        )
+        assert closed_at_sleep == [True]
+        assert not final.closed
+        assert response.read() == b"response body"
+        response.close()
+    assert final.closed
+
+
+def test_exhausted_retry_response_remains_readable(monkeypatch):
+    monkeypatch.setattr(_http, "MAX_RETRIES", 0)
+    stream = TrackingStream()
+    with HttpClient(
+        transport=httpx.MockTransport(
+            lambda request: httpx.Response(503, stream=stream)
+        )
+    ) as client:
+        response = client.send(
+            client.build_request("GET", "https://example.com"), stream=True
+        )
+        assert response.status_code == 503
+        assert not stream.closed
+        assert response.read() == b"response body"
+        response.close()
