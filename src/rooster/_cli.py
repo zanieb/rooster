@@ -13,7 +13,6 @@ from rooster._git import (
     GitLookupError,
     get_commit_for_tag,
     get_commits_between_commits,
-    get_initial_commit,
     get_latest_commit,
     get_remote_url,
     get_submodule_commit,
@@ -67,12 +66,11 @@ def release(
     version_tags = versions_from_git_tags(config, repo)
     last_version = get_latest_version(version_tags.keys())
     last_version_commit = (
-        get_commit_for_tag(repo, version_tags[last_version])
-        if last_version
-        else get_initial_commit(repo)
+        get_commit_for_tag(repo, version_tags[last_version]) if last_version else None
     )
     latest_commit = get_latest_commit(repo)
     if last_version:
+        assert last_version_commit is not None
         tag_display = (
             f" (tag: {version_tags[last_version]})"
             if version_tags[last_version] != str(last_version)
@@ -84,7 +82,7 @@ def release(
         typer.echo(
             "It looks like there are no version tags for this project, release will include all commits"
         )
-        last_display = f"{str(last_version_commit.id)[:8]} (initial commit)"
+        last_display = "the start of history"
 
     # Get the commits since the last release
     try:
