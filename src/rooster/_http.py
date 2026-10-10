@@ -3,6 +3,8 @@ import random
 import sys
 import time
 from collections.abc import Callable, Collection
+from datetime import UTC
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 import httpx
@@ -13,6 +15,20 @@ HTTP_429_TOO_MANY_REQUESTS = 429
 HTTP_503_SERVICE_UNAVAILABLE = 503
 HTTP_502_BAD_GATEWAY = 502
 HTTP_408_REQUEST_TIMEOUT = 408
+
+
+def _retry_after_seconds(value: str) -> float | None:
+    try:
+        seconds = float(value)
+    except ValueError:
+        try:
+            deadline = parsedate_to_datetime(value)
+            if deadline.tzinfo is None:
+                deadline = deadline.replace(tzinfo=UTC)
+            seconds = max(0.0, deadline.timestamp() - time.time())
+        except ValueError, TypeError, OverflowError:
+            return None
+    return seconds if math.isfinite(seconds) and seconds >= 0 else None
 
 
 def poisson_interval(
@@ -119,6 +135,7 @@ class HttpClient(httpx.Client):
 
         while try_count <= MAX_RETRIES:
             retry_seconds = None
+            server_delay = False
             exc_info = None
 
             try:
@@ -137,7 +154,10 @@ class HttpClient(httpx.Client):
                     break
 
                 if "Retry-After" in response.headers:
-                    retry_seconds = float(response.headers["Retry-After"])
+                    retry_seconds = _retry_after_seconds(
+                        response.headers["Retry-After"]
+                    )
+                    server_delay = retry_seconds is not None
 
             # Use an exponential back-off if not set in a header
             if retry_seconds is None:
@@ -146,7 +166,7 @@ class HttpClient(httpx.Client):
             # Add jitter
             jitter_factor = RETRY_JITTER_FACTOR
             if retry_seconds > 0 and jitter_factor > 0:
-                if response is not None and "Retry-After" in response.headers:
+                if server_delay:
                     # Always wait for _at least_ retry seconds if requested by the API
                     retry_seconds = bounded_poisson_interval(
                         retry_seconds, retry_seconds * (1 + jitter_factor)
