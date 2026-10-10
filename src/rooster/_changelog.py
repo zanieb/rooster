@@ -161,14 +161,14 @@ class Changelog(Document):
             if remove:
                 remove.append(i)
 
-            if isinstance(element, marko.block.Heading) and element.level == level:
-                title = renderer.render(element.children[0])
-
-                # We got to the next version heading
-                if remove:
-                    # Don't remove the next version
+            if isinstance(element, marko.block.Heading):
+                if remove and element.level <= level:
+                    # The next sibling or parent section is outside this release.
                     remove.pop()
                     break
+                if element.level != level:
+                    continue
+                title = renderer.render(element.children[0])
 
                 # Replace the existing version
                 if title == section.version:
@@ -186,9 +186,12 @@ class Changelog(Document):
                 # We cannot compare in this case
                 compare_version = None
 
+            seen_version = False
             for i, element in enumerate(tuple(elements)):
                 if not isinstance(element, marko.block.Heading):
                     continue
+                if seen_version and element.level < level:
+                    break
                 if element.level != level:
                     continue
 
@@ -199,12 +202,17 @@ class Changelog(Document):
                 try:
                     version = Version(renderer.render(element.children[0]))
                 except InvalidVersion:
-                    # We encountered an invalid version, stop here
-                    break
+                    # Headings such as Unreleased remain above versioned entries.
+                    continue
+                seen_version = True
 
                 # Otherwise, stop at the first smaller version
                 if version < compare_version:
                     break
+            else:
+                i = len(elements)
+                if elements and isinstance(elements[-1], marko.block.BlankLine):
+                    i -= 1
 
         elements.insert(i, section.element)
         elements.insert(i + 1, marko.block.BlankLine(0))
