@@ -41,6 +41,10 @@ their associated pull request and prints a warning. Review those commits when
 preparing the changelog, especially if the associated pull request is excluded
 by an ignored label.
 
+Commits without an associated or recoverable pull request are omitted from the
+generated changelog. Rooster warns with their commit IDs, including local commits
+that are unavailable on GitHub, so those changes can be reviewed separately.
+
 ### Caching
 
 Rooster caches responses from the GitHub GraphQL API in `$PWD/.cache`. You may disable this behavior with `ROOSTER_NO_CACHE=1`.
