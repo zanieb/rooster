@@ -83,6 +83,8 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
     """
     # Pull the release section from the version and increment the appropriate number
     release = list(version.release)
+    if bump_type != BumpType.pre:
+        release.extend([0] * (3 - len(release)))
     pre = None
 
     match bump_type:

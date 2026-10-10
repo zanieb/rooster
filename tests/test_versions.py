@@ -64,6 +64,23 @@ def test_development_version_can_start_an_alpha_release():
     assert bump_version(Version("1.0.0.dev1"), BumpType.pre) == Version("1.0.0a1")
 
 
+@pytest.mark.parametrize(
+    ("version", "bump", "expected"),
+    [
+        ("1", BumpType.major, "2.0.0"),
+        ("1", BumpType.minor, "1.1.0"),
+        ("1", BumpType.patch, "1.0.1"),
+        ("1.2", BumpType.major, "2.0.0"),
+        ("1.2", BumpType.minor, "1.3.0"),
+        ("1.2", BumpType.patch, "1.2.1"),
+        ("1.2", BumpType.pre, "1.2a1"),
+        ("2!1.2", BumpType.patch, "2!1.2.1"),
+    ],
+)
+def test_bump_short_release_versions(version, bump, expected):
+    assert str(bump_version(Version(version), bump)) == expected
+
+
 def test_cargo_conversion_does_not_drop_development_suffix():
     with pytest.raises(ValueError, match="Development releases"):
         to_cargo_version(Version("1.0.0.dev1"))
