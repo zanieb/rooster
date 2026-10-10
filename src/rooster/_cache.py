@@ -44,6 +44,6 @@ def cached_graphql_client():
                 allow_heuristics=True, cacheable_methods=["POST"]
             ),
         ),
-        timeout=None,
+        timeout=httpx.Timeout(30.0, connect=10.0),
     ) as client:
         yield client
