@@ -266,6 +266,7 @@ class VersionSection(Section):
         level: int = 2,
         release_date: date | None = None,
     ) -> Self:
+        pull_requests = list(pull_requests)
         section_labels = defaultdict(list, copy.deepcopy(config.section_labels))
 
         # Backwards compatibility
