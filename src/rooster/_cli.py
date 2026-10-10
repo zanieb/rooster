@@ -8,7 +8,7 @@ from rooster._changelog import (
     Changelog,
     VersionSection,
 )
-from rooster._config import Config, SubstitutionEntry
+from rooster._config import Config, SubstitutionEntry, VersionFile
 from rooster._git import (
     GitLookupError,
     get_commit_for_tag,
@@ -296,7 +296,14 @@ def release(
                         match, old_version, new_version, version_file.replace
                     )
             else:
-                update_version_file(version_file, old_version, new_version)
+                target = (
+                    version_file.model_copy(
+                        update={"path": directory / version_file.path}
+                    )
+                    if isinstance(version_file, VersionFile)
+                    else directory / version_file
+                )
+                update_version_file(target, old_version, new_version)
             typer.echo(f"Updated version in {version_file}")
 
 

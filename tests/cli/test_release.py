@@ -1,4 +1,5 @@
 import subprocess
+import tomllib
 
 import pytest
 
@@ -40,6 +41,31 @@ def test_largest_label_bump_wins(git_directory, github_api, labels, expected, ca
     release(directory=git_directory, update_version_files=False)
 
     assert f"Using new version {expected}" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        "",
+        '[tool.rooster]\nversion-files = ["pyproject.toml"]\n',
+        '[tool.rooster]\nversion-files = [{path = "pyproject.toml", format = "toml", field = "project.version"}]\n',
+    ],
+)
+def test_version_files_are_relative_to_project(
+    git_directory, github_api, monkeypatch, config
+):
+    project_with_change(git_directory, github_api, config=config)
+    caller = git_directory / "caller"
+    caller.mkdir()
+    unrelated = caller / "pyproject.toml"
+    unrelated.write_text('[project]\nversion = "1.2.3"\n')
+    monkeypatch.chdir(caller)
+
+    release(directory=git_directory)
+
+    project = tomllib.loads((git_directory / "pyproject.toml").read_text())
+    assert project["project"]["version"] == "1.2.4"
+    assert tomllib.loads(unrelated.read_text())["project"]["version"] == "1.2.3"
 
 
 def test_first_release_includes_the_root_commit(git_directory, github_api, capsys):
