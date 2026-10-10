@@ -3,7 +3,7 @@ from datetime import date
 import pytest
 from packaging.version import Version
 
-from rooster._changelog import Document, VersionSection
+from rooster._changelog import Changelog, Document, VersionSection
 from rooster._config import Config
 from rooster._github import PullRequest
 
@@ -102,3 +102,56 @@ def test_contributors_are_sorted_and_follow_visible_changes():
         "- [@Bob](https://github.com/Bob)",
         "- [@zoe](https://github.com/zoe)",
     ]
+
+
+def test_older_release_is_inserted_after_the_complete_previous_section():
+    changelog = Changelog.from_markdown(
+        "# Changelog\n\n## 2.0.0\n\nNewer release.\n\n- Final newer change\n"
+    )
+    section = VersionSection.from_elements(
+        changelog,
+        Document.from_markdown("## 1.0.0\n\nOlder release.\n").document.children,
+        2,
+    )[0]
+
+    changelog.insert_version_section(section)
+
+    result = changelog.to_markdown()
+    assert result.index("Final newer change") < result.index("## 1.0.0")
+    assert result.index("## 1.0.0") < result.index("Older release")
+
+
+@pytest.mark.parametrize("existing", ["1.0.0", "2.0.0"])
+def test_insertion_preserves_document_sections_after_versions(existing):
+    changelog = Changelog.from_markdown(
+        f"# Changelog\n\n## {existing}\n\nOld notes.\n\n# Appendix\n\nKeep this.\n"
+    )
+    section = VersionSection.from_elements(
+        changelog,
+        Document.from_markdown("## 1.0.0\n\nNew notes.\n").document.children,
+        2,
+    )[0]
+
+    changelog.insert_version_section(section)
+
+    result = changelog.to_markdown()
+    assert result.index("New notes") < result.index("# Appendix")
+    assert "Keep this." in result
+
+
+def test_unreleased_heading_stays_above_inserted_release():
+    changelog = Changelog.from_markdown(
+        "# Changelog\n\n## Unreleased\n\nPending.\n\n## 1.0.0\n\nOld notes.\n"
+    )
+    section = VersionSection.from_elements(
+        changelog,
+        Document.from_markdown("## 2.0.0\n\nNew notes.\n").document.children,
+        2,
+    )[0]
+
+    changelog.insert_version_section(section)
+
+    result = changelog.to_markdown()
+    assert (
+        result.index("Pending.") < result.index("## 2.0.0") < result.index("## 1.0.0")
+    )
