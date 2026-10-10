@@ -76,3 +76,29 @@ def test_section_filter_does_not_change_label_precedence():
         only_sections=["Features"],
     )
     assert "Change 1" not in result
+
+
+def test_contributors_are_sorted_and_follow_visible_changes():
+    result = render_entry(
+        [
+            pull_request(1, author="zoe"),
+            pull_request(2, author="Bob"),
+            pull_request(3, author="alice"),
+            pull_request(4, author="ignored", labels=["internal"]),
+            pull_request(5, author="hidden", labels=["feature"]),
+            pull_request(6, author="bot"),
+            pull_request(7, author="alice"),
+        ],
+        config=Config(
+            section_labels={"Features": ["feature"]},
+            changelog_ignore_labels=frozenset(["internal"]),
+            changelog_ignore_authors=frozenset(["bot"]),
+        ),
+        without_sections=["Features"],
+    )
+    contributors = result.split("### Contributors\n", 1)[1]
+    assert contributors.strip().splitlines() == [
+        "- [@alice](https://github.com/alice)",
+        "- [@Bob](https://github.com/Bob)",
+        "- [@zoe](https://github.com/zoe)",
+    ]

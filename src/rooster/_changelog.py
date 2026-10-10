@@ -291,12 +291,6 @@ class VersionSection(Section):
         )
         sections[other_section] = []
 
-        authors = {
-            pull_request.author
-            for pull_request in pull_requests
-            if pull_request.author not in config.changelog_ignore_authors
-        }
-
         # De-duplicate pull requests and sort into sections
         for pull_request in sorted(set(pull_requests)):
             if pull_request.labels.intersection(config.changelog_ignore_labels):
@@ -337,6 +331,12 @@ class VersionSection(Section):
             children.append(changes_section.element)
             children.extend(changes_section.children)
 
+        authors = {
+            pull_request.author
+            for entries in sections.values()
+            for pull_request in entries
+            if pull_request.author not in config.changelog_ignore_authors
+        }
         if config.changelog_contributors and authors:
             contributors = ContributorsSection.from_authors(
                 document=document, authors=authors
@@ -442,7 +442,9 @@ class ContributorsSection(ListSection):
         heading = new_heading("Contributors", level)
 
         lines = []
-        for author in authors:
+        for author in sorted(
+            set(authors), key=lambda author: (author.casefold(), author)
+        ):
             line = f"- [@{author}](https://github.com/{author})"
             lines.append(line)
 
