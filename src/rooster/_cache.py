@@ -1,47 +1,97 @@
-import contextlib
 import os
+from email.utils import formatdate, mktime_tz, parsedate_tz
+from hashlib import sha256
 
 import hishel
-import httpx
-from httpcore import Request, Response
+import httpx2
+from hishel.httpx2 import SyncCacheTransport
 
 from rooster._http import HttpClient
 
 
-class GraphQLCacheController(hishel.Controller):
-    def is_cachable(self, request: Request, response: Response) -> bool:
-        # Allow the cache to be disabled
-        if os.environ.get("ROOSTER_NO_CACHE"):
-            return False
+class GraphQLTransport(httpx2.BaseTransport):
+    def __init__(self) -> None:
+        self.transport = httpx2.HTTPTransport()
+        self.storage = hishel.SyncSqliteStorage()
+        self.policy = hishel.SpecificationPolicy(hishel.CacheOptions(shared=False))
 
-        # Since GraphQL always returns a 200, we check the response body for errors
-        error_in_response_body = False
-        try:
-            cooked_response = httpx.Response(
-                status_code=response.status,
-                headers=response.headers,
-                content=response.content,
+    def handle_request(self, request: httpx2.Request) -> httpx2.Response:
+        if request.method != "POST":
+            return self.transport.handle_request(request)
+
+        # GitHub requires POST for read-only GraphQL queries. Give each query a
+        # GET cache key so Hishel can reuse and revalidate its response. Scope it
+        # to the credential without writing the bearer token to the cache.
+        headers = httpx2.Headers(request.headers)
+        authorization = headers.pop("Authorization", "")
+        key = sha256(authorization.encode() + b"\0" + request.read()).hexdigest()
+        lookup = httpx2.Request(
+            "GET", request.url.copy_add_param("query", key), headers=headers
+        )
+
+        def fetch(lookup: httpx2.Request) -> httpx2.Response:
+            headers = httpx2.Headers(lookup.headers)
+            if authorization:
+                headers["Authorization"] = authorization
+            response = self.transport.handle_request(
+                httpx2.Request(
+                    request.method,
+                    request.url,
+                    headers=headers,
+                    content=request.content,
+                    extensions=request.extensions,
+                )
             )
-            error_in_response_body = cooked_response.json().get("errors")
-        except Exception:
-            pass  # The response cannot be parsed as JSON
-        return super().is_cachable(request, response) and not error_in_response_body
+            _set_cache_headers(response)
+            return response
+
+        cache = SyncCacheTransport(
+            httpx2.MockTransport(fetch), storage=self.storage, policy=self.policy
+        )
+        return cache.handle_request(lookup)
+
+    def close(self) -> None:
+        try:
+            self.storage.close()
+        finally:
+            self.transport.close()
 
 
-@contextlib.contextmanager
-def cached_graphql_client():
-    """
-    A HTTP client with support for caching GraphQL requests.
+def _set_cache_headers(response: httpx2.Response) -> None:
+    if response.status_code in (301, 304, 308):
+        return
+    if response.status_code == 200:
+        try:
+            response.read()
+        finally:
+            response.close()
+        try:
+            payload = response.json()
+        except ValueError:
+            payload = None
+        if isinstance(payload, dict) and not payload.get("errors"):
+            # Keep a one-day freshness lifetime when GitHub supplies neither an
+            # expiry nor a Last-Modified date for Hishel to use as a heuristic.
+            if (
+                "expires" not in response.headers
+                and "last-modified" not in response.headers
+            ):
+                date = parsedate_tz(response.headers.get("Date", ""))
+                if date is not None:
+                    response.headers["Expires"] = formatdate(
+                        mktime_tz(date) + 86400, usegmt=True
+                    )
+            return
 
-    The cache will be stored at `$PWD/.cache`.
-    """
-    with HttpClient(
-        transport=hishel.CacheTransport(
-            transport=httpx.HTTPTransport(),
-            controller=GraphQLCacheController(
-                allow_heuristics=True, cacheable_methods=["POST"]
-            ),
-        ),
-        timeout=None,
-    ) as client:
-        yield client
+    # GitHub also returns a 200 status for GraphQL errors.
+    response.headers["Cache-Control"] = "no-store"
+
+
+def cached_graphql_client() -> HttpClient:
+    """Return an HTTP client that caches GraphQL requests in `$PWD/.cache`."""
+    transport = (
+        httpx2.HTTPTransport()
+        if os.environ.get("ROOSTER_NO_CACHE")
+        else GraphQLTransport()
+    )
+    return HttpClient(transport=transport, timeout=None)

@@ -4,7 +4,7 @@ import sys
 import time
 from typing import Any, Callable
 
-import httpx
+import httpx2
 
 MAX_RETRIES = 5
 RETRY_JITTER_FACTOR = 0.2
@@ -88,16 +88,16 @@ def bounded_poisson_interval(lower_bound: float, upper_bound: float) -> float:
     return poisson_interval(average, lower_rv, upper_rv)
 
 
-class HttpClient(httpx.Client):
+class HttpClient(httpx2.Client):
     """
-    A wrapper httpx client with support for retry-after headers and retry on
+    A wrapper httpx2 client with support for retry-after headers and retry on
     transient errors.
     """
 
     def _send_with_retry(
         self,
-        request: httpx.Request,
-        send: Callable[[httpx.Request], httpx.Response],
+        request: httpx2.Request,
+        send: Callable[[httpx2.Request], httpx2.Response],
         send_args: tuple[Any, ...],
         send_kwargs: dict[str, Any],
         retry_codes: set[int] = set(),
@@ -178,7 +178,9 @@ class HttpClient(httpx.Client):
         # We ran out of retries, return the failed response
         return response
 
-    def send(self, request: httpx.Request, *args: Any, **kwargs: Any) -> httpx.Response:
+    def send(
+        self, request: httpx2.Request, *args: Any, **kwargs: Any
+    ) -> httpx2.Response:
         """
         Send a request with automatic retry behavior for the following status codes:
 
@@ -202,15 +204,15 @@ class HttpClient(httpx.Client):
                 HTTP_408_REQUEST_TIMEOUT,
             },
             retry_exceptions=(
-                httpx.ReadTimeout,
-                httpx.PoolTimeout,
-                httpx.ConnectTimeout,
+                httpx2.ReadTimeout,
+                httpx2.PoolTimeout,
+                httpx2.ConnectTimeout,
                 # `ConnectionResetError` when reading socket raises as a `ReadError`
-                httpx.ReadError,
+                httpx2.ReadError,
                 # Sockets can be closed during writes resulting in a `WriteError`
-                httpx.WriteError,
-                httpx.RemoteProtocolError,
-                httpx.LocalProtocolError,
+                httpx2.WriteError,
+                httpx2.RemoteProtocolError,
+                httpx2.LocalProtocolError,
             ),
         )
 
