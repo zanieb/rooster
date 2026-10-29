@@ -47,9 +47,11 @@ Install [uv](https://docs.astral.sh/uv/) 0.13 or later and sync the locked depen
 uv sync --locked
 ```
 
-Run the Ruff and ty checks through prek, then run the tests:
+Run the checks and tests with the locked development tools.
 
 ```sh
-uv run --locked prek run --all-files
+uv run --locked ruff check
+uv run --locked ruff format --check
+uv run --locked ty check
 uv run --locked pytest tests
 ```

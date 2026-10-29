@@ -27,8 +27,14 @@ jobs:
       - name: Install the latest version of uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Run Python checks
-        run: uv run --locked prek run --all-files
+      - name: Lint Python
+        run: uv run --locked ruff check
+
+      - name: Check Python formatting
+        run: uv run --locked ruff format --check
+
+      - name: Check Python types
+        run: uv run --locked ty check
 
       - name: Check packaging
         run: uv lock --check
