@@ -1,7 +1,7 @@
 import json
 from types import SimpleNamespace
 
-import httpx
+import httpx2
 import pytest
 
 from rooster import _github
@@ -91,7 +91,7 @@ class GitHubAPI:
                     }
                 }
             }
-        return httpx.Response(200, json=response)
+        return httpx2.Response(200, json=response)
 
 
 @pytest.fixture
@@ -101,6 +101,6 @@ def github_api(monkeypatch):
     monkeypatch.setattr(
         _github,
         "cached_graphql_client",
-        lambda: httpx.Client(transport=httpx.MockTransport(api.handle)),
+        lambda: httpx2.Client(transport=httpx2.MockTransport(api.handle)),
     )
     return api

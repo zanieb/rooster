@@ -8,7 +8,7 @@ import sys
 import textwrap
 from typing import Self
 
-import httpx
+import httpx2
 
 from rooster._cache import cached_graphql_client
 from rooster._git import git
@@ -93,7 +93,7 @@ def get_github_token() -> str:
     return match.groups()[0]
 
 
-def _graphql(client: httpx.Client, query: str, variables: dict[str, object]):
+def _graphql(client: httpx2.Client, query: str, variables: dict[str, object]):
     """
     Perform a GitHub GraphQL request.
     """
@@ -331,7 +331,7 @@ def get_release(repo_org: str, repo_name: str, tag_name: str) -> Release | None:
     github_token = get_github_token()
     try:
         release = (
-            httpx.get(
+            httpx2.get(
                 f"https://api.github.com/repos/{repo_org}/{repo_name}/releases/tags/{tag_name}",
                 headers={
                     "Accept": "application/vnd.github+json",
@@ -341,7 +341,7 @@ def get_release(repo_org: str, repo_name: str, tag_name: str) -> Release | None:
             .raise_for_status()
             .json()
         )
-    except httpx.HTTPStatusError as exc:
+    except httpx2.HTTPStatusError as exc:
         if exc.response.status_code == 404:
             return None
         raise
@@ -361,7 +361,7 @@ def update_release_notes(
 ) -> None:
     github_token = get_github_token()
     request = {"body": content}
-    response = httpx.patch(
+    response = httpx2.patch(
         f"https://api.github.com/repos/{repo_org}/{repo_name}/releases/{release_id}",
         headers={
             "Accept": "application/vnd.github+json",
@@ -374,7 +374,7 @@ def update_release_notes(
 
 
 def get_pull_request_by_number(
-    client: httpx.Client, owner: str, repo_name: str, number: int, subject: str
+    client: httpx2.Client, owner: str, repo_name: str, number: int, subject: str
 ) -> PullRequest | None:
     """
     Retrieve a merged pull request whose merge commit or title matches the subject.

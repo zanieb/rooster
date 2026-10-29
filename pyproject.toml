@@ -28,9 +28,9 @@ dependencies = [
     "typer>=0.15.0",
     "packaging>=23.1",
     "pygit2>=1.13.1",
-    "httpx>=0.25.0",
+    "httpx2>=2.9.1",
     "tqdm>=4.66.1",
-    "hishel>=0.0.24,<1.0.0",
+    "hishel[httpx2]>=1.4.0,<2",
     "pydantic>=2.4.2",
     "marko>=2.0.2",
 ]
