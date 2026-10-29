@@ -1,12 +1,42 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
 from inline_snapshot import snapshot
 from packaging.version import Version
 
 from rooster._cli import update_changelog
 from rooster._config import Config
 from rooster._github import PullRequest
+
+
+@pytest.mark.parametrize(
+    "config",
+    [
+        Config(section_labels={"Uncategorized": ["__unknown__"]}),
+        Config(changelog_sections={"__unknown__": "Uncategorized"}),
+    ],
+)
+def test_custom_unknown_section(tmp_path, config):
+    changelog = tmp_path / "CHANGELOG.md"
+    update_changelog(
+        changelog,
+        Version("1.0.0"),
+        config=config,
+        pull_requests=[
+            PullRequest(
+                title="A change without a section label",
+                number=1,
+                labels=frozenset(),
+                author="author",
+                repo_name="repo",
+                repo_owner="owner",
+                url="https://github.com/owner/repo/pull/1",
+            )
+        ],
+    )
+    assert "### Uncategorized" in changelog.read_text()
+    assert "### Other changes" not in changelog.read_text()
 
 
 def test_update_changelog(tmp_path):

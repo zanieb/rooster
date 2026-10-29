@@ -15,16 +15,18 @@ class GraphQLCacheController(hishel.Controller):
             return False
 
         # Since GraphQL always returns a 200, we check the response body for errors
-        error_in_response_body = False
         try:
             cooked_response = httpx.Response(
                 status_code=response.status,
                 headers=response.headers,
                 content=response.content,
             )
-            error_in_response_body = cooked_response.json().get("errors")
-        except Exception:
-            pass  # The response cannot be parsed as JSON
+            body = cooked_response.json()
+        except ValueError:
+            return False
+        if not isinstance(body, dict):
+            return False
+        error_in_response_body = body.get("errors")
         return super().is_cachable(request, response) and not error_in_response_body
 
 

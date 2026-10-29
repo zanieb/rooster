@@ -70,7 +70,7 @@ jobs:
 
       - name: Install release from Test PyPI
         run: |
-          uv venv -p 3.13
+          uv venv -p 3.14
           uv pip install --index-strategy unsafe-best-match --refresh-package rooster-blue --extra-index-url https://test.pypi.org/simple/ rooster-blue==${{ needs.build-and-publish.outputs.build-version }}
 
       - name: Check release version

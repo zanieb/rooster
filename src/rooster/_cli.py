@@ -1,4 +1,6 @@
+from collections.abc import Collection
 from pathlib import Path
+from typing import Annotated
 
 import typer
 
@@ -33,17 +35,17 @@ app = typer.Typer(pretty_exceptions_enable=False)
 
 @app.command()
 def release(
-    directory: Path = typer.Argument(default=Path(".")),
-    bump: BumpType = None,
-    version: str = None,
+    directory: Annotated[Path, typer.Argument()] = Path("."),
+    bump: BumpType | None = None,
+    version: str | None = None,
     update_version_files: bool = True,
-    changelog_file: str = None,
-    only_sections: list[str] = typer.Option(
-        [], help="Sections to include in the changelog"
-    ),
-    without_sections: list[str] = typer.Option(
-        [], help="Sections to exclude from the changelog"
-    ),
+    changelog_file: str | None = None,
+    only_sections: Annotated[
+        list[str] | None, typer.Option(help="Sections to include in the changelog")
+    ] = None,
+    without_sections: Annotated[
+        list[str] | None, typer.Option(help="Sections to exclude from the changelog")
+    ] = None,
 ):
     """
     Create a new release.
@@ -271,18 +273,18 @@ def release(
     typer.echo(f"Using new version {new_version}")
 
     # Generate a changelog entry for the version
-    changelog_file = (
+    changelog_path = (
         Path(changelog_file)
         if changelog_file
         else directory.joinpath(config.changelog_file)
     )
     update_changelog(
-        changelog_file,
+        changelog_path,
         version=new_version,
         config=config,
         pull_requests=pull_requests,
-        only_sections=only_sections,
-        without_sections=without_sections,
+        only_sections=only_sections or (),
+        without_sections=without_sections or (),
     )
     typer.echo("Updated changelog")
 
@@ -310,8 +312,8 @@ def update_changelog(
     version: Version,
     config: Config,
     pull_requests: list[PullRequest],
-    only_sections: set[str] = set(),
-    without_sections: set[str] = set(),
+    only_sections: Collection[str] = (),
+    without_sections: Collection[str] = (),
     release_date=None,
 ):
     if not changelog_file.exists():

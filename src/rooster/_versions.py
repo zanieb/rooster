@@ -2,11 +2,12 @@
 Utilities for working with version numbers.
 """
 
+import tomllib
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
 import pygit2 as git
-import tomllib
 from packaging.version import InvalidVersion, Version
 
 from rooster._config import BumpType, Config, VersionFile
@@ -25,10 +26,11 @@ def versions_from_git_tags(
     Returns a mapping of version to tag.
     """
     tags = get_tags(config, repo)
-    versions = {parse_version(config, tag): tag for tag in tags}
-    # Remove invalid versions
-    versions.pop(None, "")
-    return versions
+    return {
+        version: tag
+        for tag in tags
+        if (version := parse_version(config, tag)) is not None
+    }
 
 
 def parse_version(config: Config, version: str) -> Version | None:
@@ -39,23 +41,19 @@ def parse_version(config: Config, version: str) -> Version | None:
     """
     try:
         if config.version_format == "cargo":
-            version = from_cargo_version(version)
+            return from_cargo_version(version)
         else:
-            version = Version(version)
+            return Version(version)
     except InvalidVersion:
         # Ignore tags that are not valid versions
         return None
 
-    return version
 
-
-def get_latest_version(versions: list[Version]) -> Version | None:
+def get_latest_version(versions: Iterable[Version]) -> Version | None:
     """
     Get the newest version from a collection of versions.
     """
-    if not versions:
-        return None
-    return sorted(versions, reverse=True)[0]
+    return max(versions, default=None)
 
 
 def get_previous_version(versions: list[Version], version: Version) -> Version | None:
@@ -92,7 +90,7 @@ def bump_version(version: Version, bump_type: BumpType) -> Version:
             release[1] = 0
             release[2] = 0
         case BumpType.pre:
-            if not version.is_prerelease:
+            if version.pre is None:
                 pre = "a1"
             else:
                 pre = f"{version.pre[0]}{version.pre[1] + 1}"
@@ -117,7 +115,9 @@ def to_cargo_version(version: Version) -> str:
     """
     Convert a version to a string suitable for Cargo.toml.
     """
-    if not version.is_prerelease:
+    if version.dev is not None:
+        raise ValueError("Development releases cannot be converted to Cargo versions")
+    if version.pre is None:
         return f"{version.major}.{version.minor}.{version.micro}"
     return f"{version.major}.{version.minor}.{version.micro}-{CARGO_PRE_MAP[version.pre[0]]}.{version.pre[1]}"
 

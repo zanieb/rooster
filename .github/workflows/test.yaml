@@ -30,9 +30,7 @@ jobs:
         os:
           - ubuntu-latest
         python-version:
-          - "3.11"
-          # libgit2 does not publish wheels yet
-          # - "3.12"
+          - "3.14"
 
       fail-fast: false
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-""""
+""" "
 Simple utility for generating version strings based on the information in the git index.
 
 Supports three modes: parts, local, and dev.
@@ -27,6 +27,7 @@ dev: Generate a PEP 440 compliant development prerelease version tag.
 Implementation based on versioneer but is unlikely to be robust to old git versions and
 tagging schemes that deviate from PEP 440.
 """
+
 import re
 import subprocess
 import sys
@@ -34,7 +35,7 @@ import sys
 
 def panic(message):
     print(message, file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
 
 def run(command):

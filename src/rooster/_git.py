@@ -1,5 +1,6 @@
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
+from typing import cast
 
 import pygit2 as git
 
@@ -35,8 +36,7 @@ def get_commit_for_tag(
     repo: git.repository.Repository,
     tag: str,
 ) -> git.Commit:
-    commit = repo.lookup_reference(TAG_PREFIX + tag).peel()
-    return commit
+    return repo.lookup_reference(TAG_PREFIX + tag).peel(git.Commit)
 
 
 def get_initial_commit(repo: git.repository.Repository) -> git.Commit:
@@ -70,14 +70,14 @@ def get_submodule_commit(
             if i == len(path_parts) - 1:
                 entry = current_tree[part]
                 if entry.type_str == "commit":
-                    return entry
+                    return cast(git.Commit, entry)
                 else:
                     raise ValueError(f"{submodule.workdir} is not a submodule")
             else:
                 entry = current_tree[part]
                 if entry.type_str != "tree":
                     raise ValueError(f"Path component {part} is not a directory")
-                current_tree = repo.get(entry.id)
+                current_tree = cast(git.Tree, repo.get(entry.id))
     except KeyError:
         raise ValueError(f"Submodule {submodule} not found at commit {at_commit.id}")
 
@@ -88,7 +88,7 @@ def get_commits_between_commits(
     repo: git.repository.Repository,
     old_commit: git.Commit | None,
     new_commit: git.Commit | None,
-) -> Generator[git.Commit, None, None]:
+) -> Generator[git.Commit]:
     """
     Yield all commits between two commits, inclusive of the new commit but not
     the old commit.
@@ -96,10 +96,11 @@ def get_commits_between_commits(
     If the old commit is `None`, the initial commit will be used.
     If the new commit is `None`, HEAD will be used.
     """
+    new_commit = new_commit or get_latest_commit(repo)
     yield new_commit
 
     # Walk backwards from the second commit until we find the first commit
-    for commit in repo.walk(new_commit.id if new_commit else None):
+    for commit in repo.walk(new_commit.id):
         if (
             old_commit
             and commit.id == old_commit.id
@@ -108,7 +109,7 @@ def get_commits_between_commits(
             break
         yield commit
     else:
-        if old_commit and new_commit:
+        if old_commit:
             raise GitLookupError(
                 f"Could not find commit {old_commit.id} in ancestors of {new_commit.id}; is {old_commit.id} on a different branch?"
             )
@@ -124,4 +125,4 @@ def get_remote_url(
 
 
 def get_latest_commit(repo: git.repository.Repository) -> git.Commit:
-    return repo.revparse_single("HEAD")
+    return repo.revparse_single("HEAD").peel(git.Commit)

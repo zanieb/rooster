@@ -1,12 +1,11 @@
 from __future__ import annotations
 
+import tomllib
 from enum import StrEnum, auto
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 
 import pydantic
-import tomllib
-from typing_extensions import Self
 
 
 class BumpType(StrEnum):
@@ -30,8 +29,8 @@ class Config(pydantic.BaseModel):
     minor_labels: frozenset[str] = frozenset(["feature"])
     patch_labels: frozenset[str] = frozenset(["fix"])
 
-    require_labels: list[str | SubmoduleLabels] = list()
-    ignore_labels: list[str | SubmoduleLabels] = list()
+    require_labels: list[str | SubmoduleLabels] = []
+    ignore_labels: list[str | SubmoduleLabels] = []
     section_labels: dict[str, list[str]] = {}
     version_format: Literal["pep440", "cargo"] = "pep440"
     submodules: list[Path] = []
@@ -87,11 +86,13 @@ class Config(pydantic.BaseModel):
         for item in self.require_labels:
             if isinstance(item, SubmoduleLabels) and item.submodule == path.name:
                 return item.labels
+        return frozenset()
 
     def ignored_labels_for_submodule(self, path: Path) -> frozenset[str]:
         for item in self.ignore_labels:
             if isinstance(item, SubmoduleLabels) and item.submodule == path.name:
                 return item.labels
+        return frozenset()
 
     def global_required_labels(self) -> frozenset[str]:
         return frozenset(item for item in self.require_labels if isinstance(item, str))

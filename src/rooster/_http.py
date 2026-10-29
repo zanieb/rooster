@@ -2,7 +2,8 @@ import math
 import random
 import sys
 import time
-from typing import Any, Callable
+from collections.abc import Callable, Collection
+from typing import Any
 
 import httpx
 
@@ -49,7 +50,7 @@ def lower_clamp_multiple(k: float) -> float:
         # return 0 for large values of `k` to prevent numerical overflow
         return 0.0
 
-    return math.log(max(2**k / (2**k - 1), 1e-10), 2)
+    return math.log2(max(2**k / (2**k - 1), 1e-10))
 
 
 def clamped_poisson_interval(
@@ -100,8 +101,8 @@ class HttpClient(httpx.Client):
         send: Callable[[httpx.Request], httpx.Response],
         send_args: tuple[Any, ...],
         send_kwargs: dict[str, Any],
-        retry_codes: set[int] = set(),
-        retry_exceptions: tuple[type[Exception], ...] = tuple(),
+        retry_codes: Collection[int] = (),
+        retry_exceptions: tuple[type[Exception], ...] = (),
     ):
         """
         Send a request and retry it if it fails.
@@ -122,7 +123,7 @@ class HttpClient(httpx.Client):
 
             try:
                 response = send(request, *send_args, **send_kwargs)
-            except retry_exceptions:  # type: ignore
+            except retry_exceptions:
                 try_count += 1
                 if try_count > MAX_RETRIES:
                     raise
